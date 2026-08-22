@@ -21,6 +21,10 @@
 
 <br>
 
+**한국어** &nbsp;·&nbsp; [English](docs/README.en.md) &nbsp;·&nbsp; [日本語](docs/README.ja.md) &nbsp;·&nbsp; [简体中文](docs/README.zh-CN.md)
+
+<br>
+
 ### 기관급 퀀트 분석 터미널
 
 종목 하나를 넣으면 데이터 무결성부터 유동성·변동성·레짐·팩터·리스크까지 훑고,<br>
@@ -468,13 +472,20 @@ python run_desktop.py
 ### EXE 빌드
 
 ```bash
-build_windows_exe.bat
+python tools/release.py --build
 ```
 
 `dist/Plutus/Plutus.exe` — **콘솔 창 없이 앱 창만** 열린다.
 진단 로그는 화면이 아니라 `.data/logs/app.log` 로 간다.
 
-바탕화면 바로가기:
+같은 명령이 `dist/Plutus-Setup-x64.exe`(Inno Setup) 도 굽는다. 설치 위치는
+Program Files 가 아니라 `%LOCALAPPDATA%\Programs\Plutus` 다 — Plutus 는 실행
+파일 옆 `.data\` 에 쓰는데 Program Files 는 관리자만 쓸 수 있기 때문이다.
+`PrivilegesRequired=lowest` 라 **UAC 가 아예 안 뜬다**(PC방·회사 PC 에서 중요).
+
+코드 서명이 없어 SmartScreen 이 경고한다. `추가 정보` → `실행`.
+
+바탕화면 바로가기(설치본은 설치 중에 물어본다):
 
 ```bash
 powershell -ExecutionPolicy Bypass -File tools\make_shortcut.ps1
@@ -503,10 +514,12 @@ powershell -ExecutionPolicy Bypass -File tools\make_shortcut.ps1
 
 ## 계정은 중앙에, 데이터는 여기에
 
-로그인·가입·승인은 **Cloudflare Workers + D1** 위의 중앙 인증 서버가 처리한다.
+로그인·가입·등급은 **Cloudflare Workers + D1** 위의 중앙 인증 서버가 처리한다.
 전부 무료 티어 안에서 돈다. 앱에 기본 서버가 내장돼 있어 설치 직후 바로 로그인된다.
 
-**내 PC 전원과 무관하게** 다른 사람이 가입 신청을 하고 어드민이 승인할 수 있다.
+**내 PC 전원과 무관하게** 가입이 처리된다. 가입은 즉시 완료되고 무료 등급으로
+시작한다 — 승인 대기를 두면 처음 온 사람이 아무것도 못 해 보고 떠난다.
+한도는 등급이 막으므로 문을 잠글 이유가 없다.
 
 이 PC에는 계정이 없다. 대신 **브라우저마다 별도 세션 쿠키**를 발급한다.
 이 구분이 중요한 이유는 외부 접근 때문이다 — "이 PC에 로그인된 사람"을 곧
@@ -563,11 +576,11 @@ Cloudflare Tunnel로 집 밖에서 접속한다. 감시자가 터널을 지킨�
 ├── app.spec                PyInstaller (console=False · 아이콘 · 버전리소스)
 ├── auth-worker/            중앙 인증 (Workers + D1)
 ├── webapp/
-│   ├── server.py           Flask API — 116 라우트
+│   ├── server.py           Flask API — 125 라우트
 │   └── static/index.html   단일 페이지 앱
 └── engine/
     ├── paths.py            런타임 경로 단일 결정
-    ├── jiqtx/              ★ 정밀 분석 엔진 — 32 모듈 / 15,068줄
+    ├── jiqtx/              ★ 정밀 분석 엔진 — 33 모듈 / 15,601줄
     │   ├── config          자산군 19종 · 팩터 다리 · 게이트 임계
     │   ├── statcore        PSR/DSR · Purged CV · CPCV/PBO · Murphy · ACI
     │   ├── micro           EDGE · Amihud · 제곱근 임팩트 · capacity
