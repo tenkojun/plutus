@@ -321,13 +321,17 @@ async function handleRegister(req, env) {
   const { hash, salt } = await hashPassword(password);
   await env.DB.prepare(
     `INSERT INTO users (username, password_hash, salt, nickname,
-     status, role, created_at)
-     VALUES (?, ?, ?, ?, 'pending', 'user', ?)`
-  ).bind(username, hash, salt, nickname || username, nowIso()).run();
+     status, role, created_at, approved_at)
+     VALUES (?, ?, ?, ?, 'active', 'user', ?, ?)`
+  ).bind(username, hash, salt, nickname || username, nowIso(), nowIso()).run();
 
+  // 가입하면 **바로 쓸 수 있다.** 전에는 'pending' 으로 두고 관리자가
+  // 승인해야 했는데, 그러면 처음 온 사람이 아무것도 못 해 보고 떠난다.
+  // 무료 등급(하루 보고서 3회)으로 시작하고, 더 필요하면 관리자가 올린다.
+  // 등급은 user_tier 에 행이 없으면 free 이므로 여기서 따로 넣지 않는다.
   return json({ ok: true,
-    message: '가입 신청 완료 — 어드민 승인 대기 중입니다.',
-    user: { username, nickname: nickname || username, status: 'pending' },
+    message: '가입 완료 — 바로 로그인할 수 있습니다 (무료 등급: 보고서 3회/일).',
+    user: { username, nickname: nickname || username, status: 'active' },
   }, {}, env, req);
 }
 

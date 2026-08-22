@@ -1001,7 +1001,11 @@ def _auth_invalidate(central_token=None):
 
 @app.route("/api/auth/register", methods=["POST"])
 def api_auth_register():
-    """가입 신청 — 중앙 서버에서 status=pending 으로 생성된다."""
+    """가입 — 중앙 서버에서 status=active 로 즉시 생성된다(무료 등급).
+
+    승인 대기를 두면 처음 온 사람이 아무것도 못 해 보고 떠난다. 한도는
+    등급(기본 free = 보고서 3회/일)이 막으므로 문을 잠글 이유가 없다.
+    """
     from engine.auth_remote import register
     d = request.get_json(force=True, silent=True) or {}
     r = register(username=(d.get("username") or "").strip(),
