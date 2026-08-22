@@ -6007,6 +6007,39 @@ function _isEnglish(text){
 
 // 번역 캐시 (세션 내)
 const _trCache = {};
+/*
+  여러 제목을 한 요청으로 번역한다.
+
+  입력과 **같은 길이의 배열**을 돌려준다 — 번역 안 된 자리는 null.
+  영문이 아닌 것과 이미 캐시에 있는 것은 아예 보내지 않는다.
+*/
+async function _translateBatch(texts){
+  const out = new Array(texts.length).fill(null);
+  const send = [], where = [];
+  texts.forEach((t, i) => {
+    if(!t || !_isEnglish(t)) return;          // 한글 제목은 그대로 둔다
+    if(_trCache[t]){ out[i] = _trCache[t]; return; }
+    send.push(t); where.push(i);
+  });
+  if(!send.length) return out;
+  try{
+    const r = await fetch('/api/news/translate_batch', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({texts: send, target:'KO'}),
+    });
+    if(!r.ok) return out;
+    const d = await r.json();
+    const got = (d && d.ok && Array.isArray(d.translated)) ? d.translated : [];
+    got.forEach((tr, j) => {
+      if(!tr) return;
+      const i = where[j];
+      _trCache[send[j]] = tr;
+      out[i] = tr;
+    });
+  }catch(e){ /* 번역 실패로 뉴스 자체가 안 뜨면 안 된다 */ }
+  return out;
+}
+
 async function _translateTitle(text){
   if(!text || !_isEnglish(text)) return null;
   if(_trCache[text]) return _trCache[text];
@@ -6050,10 +6083,13 @@ async function loadNews(){
           margin-left:6px;font-family:var(--mono)">${rel}</span>`:''}
       </div>`;
     }).join('');
-    // 2차 비동기 번역 (영문만, 캐시)
-    _newsCache.forEach(async (n, i) => {
-      const tr = await _translateTitle(n.title || '');
-      if(tr){
+    // 2차 비동기 번역 — **한 번에 묶어서** 보낸다.
+    // 전에는 제목마다 요청을 하나씩 보냈다. 서버 실측 건당 1.58초라
+    // 20건이면 30초가 넘었고 "번역이 한참 뒤에 뜬다" 로 보였다.
+    _translateBatch(_newsCache.map(n => n.title || '')).then(list => {
+      list.forEach((tr, i) => {
+        const n = _newsCache[i];
+        if(!n || !tr) return;
         const el = document.querySelector(`.ni-title[data-idx="${i}"]`);
         if(el){
           // 뉴스 제목은 외부 피드에서 온다 — 번역 결과도 마찬가지다.
@@ -6061,7 +6097,7 @@ async function loadNews(){
           el.innerHTML = `${esc(tr)} <span style="color:var(--txt-mute);
             font-size:9.5px;margin-left:4px">[${esc((n.title||'').slice(0,40))}…]</span>`;
         }
-      }
+      });
     });
   }catch(e){
     $('#newsbody').innerHTML=

@@ -349,8 +349,79 @@ def _extract_key_content(title: str, body: str,
 _DEEPL_LAST_ERROR: Optional[str] = None  # 디버깅용 (서버 로그 X)
 
 
+# 연결 재사용. 매번 새로 붙으면 TLS 핸드셰이크가 요청마다 붙는다 —
+# 뉴스 20건이면 그 비용만 수 초다.
+_DEEPL_SESSION = None
+
+
+def _deepl_session():
+    global _DEEPL_SESSION
+    if _DEEPL_SESSION is None:
+        import requests
+        s = requests.Session()
+        s.mount("https://", requests.adapters.HTTPAdapter(
+            pool_connections=4, pool_maxsize=8, max_retries=0))
+        _DEEPL_SESSION = s
+    return _DEEPL_SESSION
+
+
+def translate_many(texts, target_lang: str = "KO"):
+    """
+    여러 문장을 **한 요청으로** 번역한다.
+
+    DeepL 은 text 를 배열로 받고 한 번에 50개까지 처리한다. 전에는
+    한 문장에 한 요청이었다 — 실측 건당 1.58초라 뉴스 20건이면 30초가
+    넘었다. 화면에는 "번역이 한참 뒤에 뜨는" 것으로 보인다.
+
+    반환: 입력과 같은 길이의 리스트. 실패한 자리는 None.
+    """
+    global _DEEPL_LAST_ERROR
+    texts = [t if isinstance(t, str) else "" for t in (texts or [])]
+    if not texts:
+        return []
+    key = get_key("deepl")
+    if not key:
+        _DEEPL_LAST_ERROR = "no_key_or_text"
+        return [None] * len(texts)
+
+    out: list = [None] * len(texts)
+    # 빈 문자열은 보내지 않는다 — 자리만 지켜 둔다
+    idx = [i for i, t in enumerate(texts) if t.strip()]
+    if not idx:
+        return out
+
+    base = ("https://api-free.deepl.com"
+            if key.endswith(":fx") else "https://api.deepl.com")
+    CHUNK = 50                      # DeepL 한 요청 상한
+    for start in range(0, len(idx), CHUNK):
+        part = idx[start:start + CHUNK]
+        payload = [texts[i][:4800] for i in part]
+        try:
+            r = _deepl_session().post(
+                f"{base}/v2/translate",
+                headers={"Authorization": f"DeepL-Auth-Key {key}",
+                         "Content-Type": "application/json",
+                         "User-Agent": "Plutus/2.0"},
+                json={"text": payload, "target_lang": target_lang},
+                timeout=20,
+            )
+            if r.status_code != 200:
+                _DEEPL_LAST_ERROR = f"http_{r.status_code}: {r.text[:200]}"
+                continue
+            tr = (r.json().get("translations") or [])
+            for j, i in enumerate(part):
+                if j < len(tr):
+                    t = (tr[j].get("text") or "").strip()
+                    if t:
+                        out[i] = t
+            _DEEPL_LAST_ERROR = None
+        except Exception as e:
+            _DEEPL_LAST_ERROR = f"{type(e).__name__}: {e}"
+    return out
+
+
 def _translate_deepl(text: str, target_lang: str = "KO") -> Optional[str]:
-    """DeepL API 번역. 키 없거나 실패 시 None."""
+    """DeepL API 번역 (단건). 키 없거나 실패 시 None."""
     global _DEEPL_LAST_ERROR
     key = get_key("deepl")
     if not key or not text:

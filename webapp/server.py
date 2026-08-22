@@ -2084,6 +2084,51 @@ def api_news_translate():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/news/translate_batch", methods=["POST"])
+@require_auth
+def api_news_translate_batch():
+    """
+    여러 문장을 **한 요청으로** 번역한다.
+
+    전에는 화면이 제목마다 요청을 하나씩 보냈다. 실측 건당 1.58초라
+    뉴스 20건이면 30초가 넘었고, 사용자 눈에는 "번역이 한참 뒤에 뜨는"
+    것으로 보였다. DeepL 은 원래 배열을 받는다 — 안 쓰고 있었을 뿐이다.
+
+    캐시에 있는 것은 아예 보내지 않는다.
+    """
+    d = request.get_json(force=True, silent=True) or {}
+    texts = d.get("texts") or []
+    target = (d.get("target") or "KO").upper()
+    if not isinstance(texts, list):
+        return jsonify({"ok": False, "error": "texts 는 배열이어야 합니다"}), 400
+    texts = [str(t or "")[:500] for t in texts[:60]]
+
+    out = [None] * len(texts)
+    todo = []
+    for i, t in enumerate(texts):
+        if not t.strip():
+            continue
+        hit = _translate_cache.get(f"{target}::{t}")
+        if hit:
+            out[i] = hit
+        else:
+            todo.append(i)
+
+    if todo:
+        from engine.data.news_summary import translate_many
+        got = translate_many([texts[i] for i in todo], target_lang=target)
+        for j, i in enumerate(todo):
+            if j < len(got) and got[j]:
+                out[i] = got[j]
+                _translate_cache[f"{target}::{texts[i]}"] = got[j]
+        if len(_translate_cache) > 2000:
+            for k in list(_translate_cache.keys())[:500]:
+                _translate_cache.pop(k, None)
+
+    return jsonify({"ok": True, "translated": out,
+                    "from_cache": len(texts) - len(todo)})
+
+
 @app.route("/api/cloud/cf/teardown", methods=["POST"])
 @require_admin
 def api_cf_teardown():
