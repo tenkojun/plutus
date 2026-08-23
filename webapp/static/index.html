@@ -2406,6 +2406,20 @@
             </div>
 
             <div class="set-section">
+              <div class="hd">보고서 언어</div>
+              <div style="font-size:12px;color:var(--txt-dim);
+                line-height:1.7;margin-bottom:10px">
+                정밀 분석 보고서와 용어 설명의 언어입니다. 테마와 마찬가지로
+                <b>만드는 시점에 언어가 정해집니다</b> — 이미 만든 보고서는
+                바뀌지 않고, 다시 생성해야 적용됩니다.
+              </div>
+              <div id="rlang-picker" style="display:flex;flex-wrap:wrap;
+                gap:8px"></div>
+              <div id="rlang-msg" style="font-size:11px;color:var(--txt-mute);
+                margin-top:8px"></div>
+            </div>
+
+            <div class="set-section">
               <div class="hd">보고서 테마</div>
               <div style="font-size:12px;color:var(--txt-dim);
                 line-height:1.7;margin-bottom:10px">
@@ -7093,6 +7107,7 @@ function setAppLang(code){
 function refreshAppearancePane(){
   _fxSyncButtons();
   refreshReportTheme();
+  refreshReportLang();
   renderLangPicker();
   // 테마 picker
   const tp=$('#theme-picker');
@@ -8141,6 +8156,46 @@ async function refreshReportTheme(){
     box.innerHTML = '<div style="color:var(--down);font-size:11px">'+
       _histEsc(e.message)+'</div>';
   }
+}
+
+// 보고서 언어. 화면 언어와 따로 둔다 — 화면은 브라우저마다 달라도 되지만
+// 보고서는 서버가 파일로 굽는 산출물이라 한 곳에서 정해져야 한다.
+async function refreshReportLang(){
+  const box = $('#rlang-picker');
+  if(!box) return;
+  try{
+    const r = await(await fetch('/api/reports/lang')).json();
+    if(!r.ok) throw new Error(r.error || '조회 실패');
+    const L = (window.PlutusI18N && PlutusI18N.langs) || {};
+    box.innerHTML = (r.langs||[]).map(code=>{
+      const on = code===r.lang;
+      const label = (L[code] && L[code].label) || code;
+      return `<button class="rlang-btn" data-rlang="${_escHtml(code)}"
+        onclick="setReportLang('${_escHtml(code)}')"
+        style="background:${on?'var(--cyan)':'transparent'};
+        color:${on?'var(--on-cyan)':'var(--txt-dim)'};
+        border:1px solid ${on?'var(--cyan)':'var(--line)'};
+        font-family:var(--mono);font-size:11px;padding:7px 14px;
+        cursor:pointer;letter-spacing:.5px">${_escHtml(label)}</button>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML = '<div style="color:var(--down);font-size:11px">'+
+      _escHtml(e.message)+'</div>';
+  }
+}
+
+async function setReportLang(code){
+  try{
+    const r = await(await fetch('/api/reports/lang',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({lang:code}),
+    })).json();
+    if(!r.ok){ alert('실패: '+(r.error||'')); return; }
+    await refreshReportLang();
+    const m = $('#rlang-msg');
+    if(m) m.textContent =
+      '다음에 생성하는 보고서부터 적용됩니다.';
+  }catch(e){ alert('네트워크 오류: '+e); }
 }
 
 async function setReportTheme(id){

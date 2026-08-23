@@ -438,6 +438,47 @@ def _report_theme() -> str:
         return DEFAULT_THEME
 
 
+_REPORT_LANG_FILE = "report_lang.txt"
+
+
+def _report_lang() -> str:
+    """
+    저장된 보고서 언어. 테마와 성질이 같다 — 자기완결 HTML 이라
+    **생성 시점에 굳는다.** 이미 만든 보고서는 언어가 바뀌지 않고,
+    다시 생성해야 적용된다.
+
+    화면 언어(브라우저 localStorage)와는 따로 둔다. 같은 계정을 여러
+    브라우저에서 쓸 때 화면은 각자 달라도 되지만, 보고서는 서버가
+    파일로 굽는 산출물이라 한 곳에서 정해져야 한다.
+    """
+    from engine.jiqtx.i18n import LANGS
+    from engine.paths import DATA_DIR
+    try:
+        v = (DATA_DIR / _REPORT_LANG_FILE).read_text(encoding="utf-8").strip()
+        return v if v in LANGS else "ko"
+    except Exception:
+        return "ko"
+
+
+@app.route("/api/reports/lang", methods=["GET", "POST"])
+@require_auth
+def api_report_lang():
+    from engine.jiqtx.i18n import LANGS
+    from engine.paths import DATA_DIR
+    if request.method == "GET":
+        return jsonify({"ok": True, "lang": _report_lang(),
+                        "langs": list(LANGS)})
+    d = request.get_json(force=True, silent=True) or {}
+    v = (d.get("lang") or "").strip()
+    if v not in LANGS:
+        return jsonify({"ok": False, "error": "알 수 없는 언어"}), 400
+    try:
+        (DATA_DIR / _REPORT_LANG_FILE).write_text(v, encoding="utf-8")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "lang": v})
+
+
 @app.route("/api/reports/theme", methods=["GET", "POST"])
 @require_auth
 def api_report_theme():
@@ -2441,7 +2482,8 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
         safe_tk = ticker.replace("/", "_").replace(".", "_")
         base = "%s_precision.html" % safe_tk
         path = os.path.join(_REPORTS, base)
-        jiqtx.save_html(a, path, theme=_report_theme())
+        lang = _report_lang()
+        jiqtx.save_html(a, path, theme=_report_theme(), lang=lang)
         report_url = "/report/" + base
 
         # 같은 분석으로 **간단 리서치**도 함께 만든다. 다시 계산하지 않고
@@ -2451,7 +2493,8 @@ def _run_jiqtx_job(job_id: str, ticker: str, fast: bool, user_id=None):
             from engine.jiqtx.simple_report import save_simple
             sbase = "%s_simple.html" % safe_tk
             save_simple(a, os.path.join(_REPORTS, sbase),
-                        theme=_report_theme(), full_report_url=report_url)
+                        theme=_report_theme(), full_report_url=report_url,
+                        lang=lang)
             simple_url = "/report/" + sbase
         except Exception as e:
             print("[simple_report] 생성 실패:", e)

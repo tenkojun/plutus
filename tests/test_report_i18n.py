@@ -149,6 +149,22 @@ def test_no_hangul_left_in_translations(lang):
     assert not bad, "한글이 남은 항목 %d개: %s" % (len(bad), bad[:3])
 
 
+def test_report_language_is_reachable_from_the_app():
+    """서버·화면 배선이 실제로 있는가.
+
+    사전을 아무리 채워도 lang 을 넘겨 주는 곳이 없으면 사용자에게는
+    아무 일도 일어나지 않는다.
+    """
+    server = (ROOT / "webapp" / "server.py").read_text(encoding="utf-8")
+    assert "/api/reports/lang" in server, "보고서 언어 API 가 없다"
+    assert "lang=lang" in server, "렌더 호출에 lang 이 전달되지 않는다"
+
+    html = (ROOT / "webapp" / "static" / "index.html").read_text(
+        encoding="utf-8")
+    assert 'id="rlang-picker"' in html, "설정에 보고서 언어 선택이 없다"
+    assert "setReportLang" in html
+
+
 def test_render_html_accepts_lang():
     """진입점에 lang 이 실제로 달려 있는가."""
     import inspect
