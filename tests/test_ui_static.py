@@ -268,3 +268,26 @@ def test_emphasis_hierarchy_is_preserved(theme):
     r = {v: _ratio(val(v), panel) for v in ("--txt", "--txt-dim", "--txt-mute")}
     assert r["--txt"] > r["--txt-dim"] > r["--txt-mute"], (
         f"{theme}: 강조 단계가 무너졌다 {r}")
+
+def test_chart_wheel_zoom_has_a_fallback():
+    """휠 줌이 안 먹는 환경이 있다 — 폴백이 붙어 있는가.
+
+    Chromium 에서는 deltaMode 0/1/2 모두 정상 확대되는데, EXE(WebView2)
+    에서 캔들 위 휠이 아무 반응 없다는 보고가 있었다. 오버레이 문제도
+    (캔버스가 최상단인 것을 확인), 라이브러리 옵션 문제도 아니었다.
+
+    그래서 컨테이너에서 버블 단계로 받되 **차트가 이미 처리했으면
+    물러나는** 폴백을 뒀다. 이 두 가지가 함께 있어야 의미가 있다 —
+    passive:false 가 아니면 preventDefault 가 안 먹고, defaultPrevented
+    검사가 없으면 잘 되는 환경에서 두 배로 확대된다.
+    """
+    html = (ROOT / "webapp" / "static" / "index.html").read_text(
+        encoding="utf-8")
+    assert "_chartWheelFallback" in html, "휠 줌 폴백이 없다"
+    assert "if(e.defaultPrevented) return;" in html, (
+        "폴백이 차트의 처리 여부를 안 본다 — 이중 확대가 난다")
+    assert ("addEventListener('wheel', _chartWheelFallback, "
+            "{passive:false})") in html, (
+        "passive:false 가 아니면 preventDefault 가 먹지 않는다")
+    assert "handleScale:{mouseWheel:true" in html, (
+        "휠 줌 옵션을 명시하지 않았다")

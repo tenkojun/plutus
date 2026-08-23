@@ -4341,7 +4341,50 @@ function _chartThemeOptions(){
     timeScale:{borderColor:ln,timeVisible:true},
     crosshair:{vertLine:{color:cy,width:1,labelBackgroundColor:'var(--on-cyan)'},
       horzLine:{color:cy,labelBackgroundColor:'var(--on-cyan)'}},
+    // 휠 줌·드래그 팬을 **명시**한다. 라이브러리 기본값도 켜져 있지만,
+    // 적어 두지 않으면 "기본값이 뭐였더라"를 매번 다시 확인하게 된다.
+    handleScroll:{mouseWheel:true, pressedMouseMove:true,
+      horzTouchDrag:true, vertTouchDrag:true},
+    handleScale:{mouseWheel:true, pinch:true,
+      axisPressedMouseMove:true, axisDoubleClickReset:true},
   };
+}
+
+/* 휠 줌 폴백 — 차트가 휠을 못 받는 환경이 있다.
+   ------------------------------------------------
+   Chromium(개발용 브라우저)에서는 deltaMode 0/1/2 모두 정상 확대된다.
+   그런데 EXE(WebView2)에서 캔들 위에 커서를 두고 휠을 굴리면 아무 일도
+   일어나지 않는다는 보고가 있었다. 가격축은 반응하므로 오버레이 문제도
+   아니고(캔버스가 최상단인 것을 확인했다), 라이브러리 옵션 문제도 아니다.
+   즉 **휠 이벤트가 캔버스 리스너까지 도달하지 못하는** 환경이 있다.
+
+   재현되지 않는 환경을 짐작으로 고치는 대신, 안전한 폴백을 둔다:
+   컨테이너에서 버블 단계로 받되 **차트가 이미 처리했으면(preventDefault)
+   아무것도 하지 않는다.** 그래서 잘 되는 환경에서는 이중 확대가 없고,
+   안 되는 환경에서만 우리가 직접 시간축을 줌한다. */
+function _chartWheelFallback(e){
+  if(e.defaultPrevented) return;      // 차트가 이미 처리했다
+  if(!chart) return;
+  const ts = chart.timeScale();
+  const r = ts.getVisibleLogicalRange();
+  if(!r) return;
+  const box = $('#chart').getBoundingClientRect();
+  if(!box.width) return;
+
+  // 커서가 있는 x 지점을 고정하고 그 주위로 확대/축소한다.
+  const f = Math.min(Math.max((e.clientX - box.left) / box.width, 0), 1);
+  // deltaMode: 0=픽셀 1=줄 2=페이지. 줄·페이지는 픽셀로 환산해야
+  // 한 칸 굴렸을 때의 배율이 환경마다 달라지지 않는다.
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? box.height : 1;
+  const k = Math.exp(e.deltaY * unit * 0.0015);   // 위로 굴리면 <1 = 확대
+  const span = r.to - r.from;
+  const next = Math.min(Math.max(span * k, 12), 200000);
+  const anchor = r.from + span * f;
+  try{
+    ts.setVisibleLogicalRange({from: anchor - next * f,
+                               to:   anchor + next * (1 - f)});
+    e.preventDefault();
+  }catch(err){ /* 데이터가 없으면 조용히 넘어간다 */ }
 }
 function applyChartThemeColors(){
   if(!chart||!series) return;
@@ -4357,6 +4400,9 @@ function applyChartThemeColors(){
 }
 function initChart(){
   chart=LightweightCharts.createChart($('#chart'),_chartThemeOptions());
+  // passive:false 여야 preventDefault 가 먹는다. 버블 단계라 캔버스의
+  // 리스너가 먼저 돈다 — 거기서 처리됐으면 폴백은 스스로 물러난다.
+  $('#chart').addEventListener('wheel', _chartWheelFallback, {passive:false});
   series=chart.addCandlestickSeries({
     upColor:themeColor('--up','#ff5a52'),
     downColor:themeColor('--down','#4d9cff'),
