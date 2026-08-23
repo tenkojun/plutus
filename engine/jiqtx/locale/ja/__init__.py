@@ -23,6 +23,7 @@ from ._book import CATALOG as _BOOK
 from ._config import CATALOG as _CONFIG
 from ._final import CATALOG as _FINAL
 from ._misc import CATALOG as _MISC
+from ._markdown import CATALOG as _MARKDOWN
 
 PARTS: dict[str, dict[str, str]] = {
     "glossary": _GLOSSARY,
@@ -42,6 +43,7 @@ PARTS: dict[str, dict[str, str]] = {
     "config": _CONFIG,
     "final": _FINAL,
     "misc": _MISC,
+    "markdown": _MARKDOWN,
 }
 
 CATALOG: dict[str, str] = {}
