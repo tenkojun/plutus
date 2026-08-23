@@ -12,6 +12,7 @@ from ._report import CATALOG as _REPORT
 from ._sections import CATALOG as _SECTIONS
 from ._verdict import CATALOG as _VERDICT
 from ._metrics import CATALOG as _METRICS
+from ._trade import CATALOG as _TRADE
 PARTS: dict[str, dict[str, str]] = {
     "glossary": _GLOSSARY,
     "panel": _PANEL,
@@ -19,6 +20,7 @@ PARTS: dict[str, dict[str, str]] = {
     "sections": _SECTIONS,
     "verdict": _VERDICT,
     "metrics": _METRICS,
+    "trade": _TRADE,
 }
 
 CATALOG: dict[str, str] = {}
