@@ -27,6 +27,7 @@ from ._panel2 import CATALOG as _PANEL2
 from ._config import CATALOG as _CONFIG
 from ._misc import CATALOG as _MISC
 from ._final import CATALOG as _FINAL
+from ._markdown import CATALOG as _MARKDOWN
 
 PARTS = {
     "glossary": _GLOSSARY,
@@ -50,6 +51,7 @@ PARTS = {
     "config": _CONFIG,
     "misc": _MISC,
     "final": _FINAL,
+    "markdown": _MARKDOWN,
 }
 
 CATALOG: dict[str, str] = {}
