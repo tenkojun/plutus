@@ -17,12 +17,14 @@ import pandas as pd
 
 # ── 패키지 내부 의존 ──────────────────────────────────────────
 from .dynamic_report import CSS, E, JS, _f, df_table, kv_table, note
+from . import i18n
 from . import charts as ch
 
 
 
 
-def render_portfolio(P, title: str = "포트폴리오") -> str:
+def render_portfolio(P, title: str = "포트폴리오",
+                     lang: str = "ko") -> str:
     r, nt, ac = P.risk, P.netting, P.allocation
     fails = P.limits[~P.limits["충족"]] if len(P.limits) else pd.DataFrame()
 
@@ -182,7 +184,7 @@ def render_portfolio(P, title: str = "포트폴리오") -> str:
             ("stress", "⛨ 스트레스"), ("limits", "▣ 한도"),
             ("names", "≡ 구성")))
 
-    return f"""<!DOCTYPE html><html lang="ko"><head>
+    html_s = f"""<!DOCTYPE html><html lang="{i18n.html_lang(lang)}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{E(title)} — Plutus 포트폴리오</title><style>{CSS}</style></head><body>
 <div class="wrap">
@@ -196,9 +198,11 @@ def render_portfolio(P, title: str = "포트폴리오") -> str:
 <footer><p>개별 종목 분석은 각 종목 리포트를 참조. 본 산출물은 방법론 검증용
 정보 제공이며 투자 자문이 아닙니다.</p></footer>
 </div><script>{JS}</script></body></html>"""
+    return i18n.translate_html(html_s, lang)
 
 
-def save_portfolio(P, path: str, title: str = "포트폴리오") -> str:
+def save_portfolio(P, path: str, title: str = "포트폴리오",
+                   lang: str = "ko") -> str:
     with open(path, "w", encoding="utf-8") as f:
-        f.write(render_portfolio(P, title))
+        f.write(render_portfolio(P, title, lang=lang))
     return path

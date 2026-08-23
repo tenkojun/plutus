@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from . import charts as ch
+from . import i18n
 from .report_theme import DEFAULT_THEME, themed_css
 from .glossary import build_css as _tip_css
 
@@ -397,8 +398,12 @@ ul.kill li{margin:11px 0}
 
 
 def render_simple(a, theme: str = DEFAULT_THEME,
-                  full_report_url: str = "") -> str:
-    """간단 리서치 HTML. 전문 보고서와 같은 Analysis 를 쓴다."""
+                  full_report_url: str = "",
+                  lang: str = "ko") -> str:
+    """간단 리서치 HTML. 전문 보고서와 같은 Analysis 를 쓴다.
+
+    ``lang`` 도 전문 보고서와 같이 생성 시점에 굳는다.
+    """
     parts = [
         _hero(a),
         _q_what(a),
@@ -425,17 +430,21 @@ def render_simple(a, theme: str = DEFAULT_THEME,
 
     body = "".join(p for p in parts if p)
     css = themed_css(CSS + _tip_css(), theme)
-    return (f'<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+    html_s = (f'<!doctype html>'
+            f'<html lang="{i18n.html_lang(lang)}">'
+            f'<head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>{E(a.ticker)} 간단 리서치 — Plutus</title>'
             f'<style>{css}</style></head><body>'
             f'<div class="wrap">{body}{foot}</div></body></html>')
+    return i18n.translate_html(html_s, lang)
 
 
 def save_simple(a, path: str, theme: str = DEFAULT_THEME,
-                full_report_url: str = "") -> str:
+                full_report_url: str = "", lang: str = "ko") -> str:
     import io
-    html_s = render_simple(a, theme=theme, full_report_url=full_report_url)
+    html_s = render_simple(a, theme=theme,
+                           full_report_url=full_report_url, lang=lang)
     with io.open(path, "w", encoding="utf-8") as f:
         f.write(html_s)
     return path

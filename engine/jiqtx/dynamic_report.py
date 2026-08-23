@@ -33,6 +33,7 @@ import pandas as pd
 
 # ── 패키지 내부 의존 ──────────────────────────────────────────
 from . import charts as ch
+from . import i18n
 from .glossary import TERMS as _TERMS
 from .glossary import build_css as _tip_css
 from .glossary import build_js as _tip_js
@@ -1971,7 +1972,14 @@ def _tip_script() -> str:
     return _tip_js().replace("__TERMS_JSON__", payload)
 
 
-def render_html(a, theme: str = DEFAULT_THEME) -> str:
+def render_html(a, theme: str = DEFAULT_THEME,
+                lang: str = "ko") -> str:
+    """보고서 HTML.
+
+    ``lang`` 은 **생성 시점에 굳는다.** 자기완결 HTML 이라 나중에
+    바꿀 방법이 없다 — 테마와 같은 성질이다. 다른 언어로 보려면
+    다시 생성해야 한다.
+    """
     secs = build_sections(a)
     for x in secs:
         x.part = SECTION_PART.get(x.sid, "IV")
@@ -2036,7 +2044,7 @@ def render_html(a, theme: str = DEFAULT_THEME) -> str:
         toc.append('</div>')
 
     skipped = [x.title for x in REGISTRY if x not in secs]
-    return f"""<!DOCTYPE html><html lang="ko"><head>
+    html_s = f"""<!DOCTYPE html><html lang="{i18n.html_lang(lang)}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{E(a.ticker)} — Plutus</title><style>{themed_css(CSS + _tip_css(), theme)}</style></head><body>
 <div class="topbar"><span class="tb-t">{E(a.ticker)}</span>
@@ -2056,9 +2064,11 @@ def render_html(a, theme: str = DEFAULT_THEME) -> str:
 <p>{E(a.verdict.disclaimer)}</p>
 </footer></div><script>{JS}
 {_tip_script()}</script></body></html>"""
+    return i18n.translate_html(html_s, lang)
 
 
-def save_html(a, path: str, theme: str = DEFAULT_THEME) -> str:
+def save_html(a, path: str, theme: str = DEFAULT_THEME,
+              lang: str = "ko") -> str:
     with open(path, "w", encoding="utf-8") as f:
-        f.write(render_html(a, theme=theme))
+        f.write(render_html(a, theme=theme, lang=lang))
     return path
