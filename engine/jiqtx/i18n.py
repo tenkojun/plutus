@@ -46,6 +46,10 @@ LANGS: Dict[str, str] = {
 # 화면에 보이는 속성. 툴팁은 태그 밖 텍스트가 아니라 속성에 들어 있다.
 _ATTRS = ("data-tip", "data-t", "title", "aria-label", "alt")
 
+def _is_hangul(ch: str) -> bool:
+    return "가" <= ch <= "힣"
+
+
 _CATALOGS: Dict[str, Dict[str, str]] = {}
 _PATTERNS: Dict[str, "re.Pattern[str] | None"] = {}
 
@@ -101,9 +105,21 @@ def _pattern(lang: str):
         # 대가: f-string 두 조각이 한글끼리 맞붙어 나오면(드물다)
         # 번역이 안 된다. 그쪽은 한국어로 남을 뿐 망가지지는 않는다 —
         # 틀린 번역보다 원문이 낫다.
-        pat = re.compile(
-            "(?<![가-힣])(?:%s)(?![가-힣])"
-            % "|".join(re.escape(k) for k in keys))
+        # 경계는 **키마다 따로** 건다. 그룹 전체에 걸면 문장부호로 끝나는
+        # 키가, 뒤에 한글이 온다는 이유로 거부된다.
+        #
+        #   키   "반론 인용 — &#x27;"      출력  "…&#x27;표본외 통계…"
+        #
+        # 뒤 글자가 '표' 라서 그룹 lookahead 가 실패하고, 정규식이 되돌아가
+        # 짧은 키 '반론' 만 먹었다. 결과는 한국어 문장 한가운데 영어 단어
+        # 하나가 박힌 모양이다. 경계가 필요한 쪽은 **키의 그 끝이 한글일
+        # 때뿐**이다.
+        alts = []
+        for k in keys:
+            pre = "(?<![가-힣])" if _is_hangul(k[0]) else ""
+            post = "(?![가-힣])" if _is_hangul(k[-1]) else ""
+            alts.append(pre + re.escape(k) + post)
+        pat = re.compile("|".join(alts))
     _PATTERNS[lang] = pat
     return pat
 
@@ -124,10 +140,14 @@ def html_lang(lang: str) -> str:
 
 
 # <style>/<script> 블록과 태그를 통째로 잡는다. 나머지가 텍스트다.
+#
+# `<` 뒤에 글자·/·!·? 가 와야 태그로 본다 — 브라우저의 판단과 같다.
+# 이 조건이 없으면 본문에 그대로 들어 있는 `|t| < 2 인 지평의 …` 에서
+# `< 2 인 … >` 가 통째로 태그로 잡혀, 그 뒤 문장이 번역 대상에서 빠졌다.
 _CHUNK = re.compile(
     r"(<style\b[^>]*>.*?</style>"
     r"|<script\b[^>]*>.*?</script>"
-    r"|<[^>]*>)",
+    r"|</?[A-Za-z!?][^>]*>)",
     re.S | re.I,
 )
 _ATTR_RE = re.compile(

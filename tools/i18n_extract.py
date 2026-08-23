@@ -63,6 +63,17 @@ MAX_LEN = 400
 SKIP_MODULES = {"cli.py", "_validate.py", "_demo.py", "replay.py",
                 "i18n.py"}
 
+# **일부러 번역하지 않는 조각.** 맨 조사는 혼자서 뜻이 없다.
+#
+# 한 번 넣어 봤다가 뺐다. 경계를 그룹 전체에 걸던 시절에는 태그 옆에서만
+# 발동해 안전해 보였는데, 경계를 키마다 거는 올바른 방식으로 고치자
+# 문장 한가운데서 터졌다 — "이 선택 하나가"(this choice alone)에서
+# 지시어가 지워져 " 선택 하나가" 가 됐다. 조사 하나가 한국어로 남는 것이
+# 단어가 사라지는 것보다 낫다.
+#
+# 여기 넣어 두면 "남은 일" 집계에서도 빠져, 진짜 남은 작업만 보인다.
+SKIP_KEYS = {"이 ", "가 ", "는 ", "로 ", " 는 ", "을 ", "를 "}
+
 
 def _docstring_ids(tree: ast.AST) -> set[int]:
     out: set[int] = set()
@@ -78,28 +89,49 @@ def _docstring_ids(tree: ast.AST) -> set[int]:
     return out
 
 
+# %-포맷과 str.format 자리. f-string 은 AST 가 이미 갈라 주지만 이 둘은
+# 리터럴 안에 그대로 남아 있어서, 자르지 않으면 렌더 결과와 영영 다르다.
+#
+#   리터럴  'VaR은 … 하위 %.0f%% 경계값이다. ES(…)를 함께 보라.'
+#   출력    'VaR은 … 하위 5% 경계값이다. ES(…)를 함께 보라.'
+#
+# 통째로 키로 쓰면 안 맞고, 대신 그 안의 짧은 키만 걸려서 한국어 문장에
+# 영어 단어가 하나 박힌다. 실제로 그렇게 나왔다.
+#
+# 변환 문자를 실제 목록으로 좁힌다. 넓게 잡으면 산문의 퍼센트가 걸린다 —
+# "15%p", "95% MDD", "몇 % 변하는가" 가 전부 포맷 자리로 오인됐다.
+_FMT = re.compile(r"%[-+ #0]*[\d.*]*[hlL]?[sdifgeExXorc]|\{[^{}]*\}")
+
+
 def _pieces(v: str) -> list[str]:
     """리터럴 하나에서 실제로 화면에 나가는 조각들을 뽑는다.
 
-    HTML 이 아니면 그 자체가 조각 하나다. HTML 이면 태그를 빼고 텍스트와
-    보이는 속성값만 남긴다.
+    HTML 이면 태그를 걷어내고, 포맷 자리가 있으면 그 자리에서 자른다.
+    남는 것이 값과 무관하게 출력에 그대로 실리는 조각이다.
     """
-    if "<" not in v or ">" not in v:
-        return [v]
-    from engine.jiqtx import i18n
+    parts = [v]
+    if "<" in v and ">" in v:
+        from engine.jiqtx import i18n
+        parts = []
+        for part in i18n._CHUNK.split(v):
+            if not part:
+                continue
+            low = part[:7].lower()
+            if low.startswith("<style") or low.startswith("<script"):
+                continue
+            if part.startswith("<"):
+                for m in i18n._ATTR_RE.finditer(part):
+                    parts.append(m.group(3))
+                continue
+            parts.append(part)
+
     out: list[str] = []
-    for part in i18n._CHUNK.split(v):
-        if not part:
-            continue
-        low = part[:7].lower()
-        if low.startswith("<style") or low.startswith("<script"):
-            continue
-        if part.startswith("<"):
-            for m in i18n._ATTR_RE.finditer(part):
-                out.append(m.group(3))
-            continue
-        out.append(part)
-    return [p for p in out if HANGUL.search(p)]
+    for part in parts:
+        for piece in _FMT.split(part):
+            # `%%` 는 자를 자리가 아니라 출력에서 `%` 한 글자가 된다.
+            out.append(piece.replace("%%", "%"))
+    return [p for p in out
+            if HANGUL.search(p) and p not in SKIP_KEYS]
 
 
 def extract() -> dict[str, list[str]]:

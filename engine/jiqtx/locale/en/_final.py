@@ -12,7 +12,6 @@ rule stops it firing inside running Korean text.
 CATALOG = {
 
     # ══ panel.py — tails ══════════════════════════════════════
-    "로 ": " ",
     "건 중 미해결 쟁점 ": " raised, of which unresolved: ",
     "건이 남았습니다.": ".",
     "의 t값이 ": " has a t-value of ",

@@ -165,7 +165,6 @@ CATALOG = {
     "입니다. 제출 실패는 시스템 오류로 로깅됩니다.":
         ". Failing to file is logged as a system error.",
     "의미 있음": "Meaningful",
-    "는 ": " is ",
     "무엇인가": "what it is",
     "무엇이 바뀌면 생각을 바꾸는가": "what would change their mind",
     " 확신도 ": " confidence ",
@@ -187,6 +186,4 @@ CATALOG = {
     "년": " years",
     " 년": " years",
     " — 높음": " — high",
-    "{:.1f}회": "{:.1f}×",
-    "{:.1f} 일": "{:.1f} days",
 }

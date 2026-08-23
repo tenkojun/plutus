@@ -5,19 +5,18 @@ English — dynamic_report, part 1: verdict strip, thesis notes, archetypes.
 Now that the extractor decomposes HTML literals, these keys are the actual
 text nodes the renderer emits, so they match exactly.
 
-On the subject markers ('이 ', '가 '): Korean attaches them after a noun and
-English has no equivalent, so they map to a plain space. They are safe to
-include *because of* the Hangul-boundary rule — they can only fire when the
-following character is not Hangul, which in practice means the marker sits
-right before a tag. In running Korean text (marker followed by a word) the
-rule blocks the match, so nothing gets shredded.
+Bare Korean particles ('이 ', '가 ', '로 ', '는 ') are deliberately NOT keys.
+They were tried once: under the old whole-group boundary rule they happened
+to fire only next to a tag, which looked safe. Once boundaries were applied
+per key — the correct behaviour — they began firing mid-sentence, and
+'이 선택 하나가' ("this choice alone") lost its demonstrative and became
+' 선택 하나가'. A particle carries no meaning on its own; leaving one in
+Korean is strictly better than deleting a word.
 """
 
 CATALOG = {
 
     # ── subject markers (see module docstring) ────────────────
-    "이 ": " ",
-    "가 ": " ",
 
     # ── empty states ──────────────────────────────────────────
     "데이터 없음": "No data",

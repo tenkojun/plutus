@@ -88,8 +88,9 @@ CATALOG = {
     " → 구조 변화 경보. 팩터 관계가 붕괴 중일 수 있음. 정적 베타 사용 금지.":
         " → structural-change alert. The factor relationship may be "
         "breaking down. Do not use a static beta.",
-    "연 %.1f%% 의 구조적 롤 %s 추정":
-        "estimated structural roll %s of %.1f%% per year",
+    "연 ": "",
+    "% 의 구조적 롤 ": "% structural roll per year, ",
+    " 추정": " (estimated)",
     " 가 밴드 상단 초과 → 사실상 프록시 복제 관계. 독립적 알파 원천으로 보기 "
     "어려움.":
         " exceeds the top of the band → effectively a replication of the "
@@ -109,10 +110,11 @@ CATALOG = {
     "평균제출확률": "Mean submitted probability",
 
     # ══ risk.py ═══════════════════════════════════════════════
-    "VaR은 최대손실이 아니라 하위 %.0f%% 경계값이다. ES(조건부 기대손실)를 "
-    "함께 보라.":
-        "VaR is not the maximum loss but the lower %.0f%% boundary. Read "
-        "it together with ES (conditional expected shortfall).",
+    "VaR은 최대손실이 아니라 하위 ":
+        "VaR is not the maximum loss but the lower ",
+    "% 경계값이다. ES(조건부 기대손실)를 함께 보라.":
+        "% boundary. Read it together with ES (conditional expected "
+        "shortfall).",
     " ⚠ 모든 VaR 모델이 커버리지 검정을 통과하지 못함.":
         " ⚠ No VaR model passed its coverage test.",
     "회복 패턴 정상 범위": "Recovery pattern within normal range",

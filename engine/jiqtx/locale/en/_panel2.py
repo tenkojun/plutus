@@ -227,7 +227,6 @@ CATALOG = {
         " — the hedge ratio is unstable and could add risk instead",
     "β 변동계수 0.8 초과 레그: ":
         "Legs with a β coefficient of variation above 0.8: ",
-    " 는 ": " and ",
     " 와 상관 ": " have a correlation of ",
     " — 헤지 레그 중복이므로 제외":
         " — a duplicate hedge leg, so it is dropped",
