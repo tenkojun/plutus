@@ -15,6 +15,8 @@ from ._metrics import CATALOG as _METRICS
 from ._trade import CATALOG as _TRADE
 from ._equity import CATALOG as _EQUITY
 from ._simple import CATALOG as _SIMPLE
+from ._dynamic1 import CATALOG as _DYNAMIC1
+from ._dynamic2 import CATALOG as _DYNAMIC2
 PARTS: dict[str, dict[str, str]] = {
     "glossary": _GLOSSARY,
     "panel": _PANEL,
@@ -25,6 +27,8 @@ PARTS: dict[str, dict[str, str]] = {
     "trade": _TRADE,
     "equity": _EQUITY,
     "simple": _SIMPLE,
+    "dynamic1": _DYNAMIC1,
+    "dynamic2": _DYNAMIC2,
 }
 
 CATALOG: dict[str, str] = {}
