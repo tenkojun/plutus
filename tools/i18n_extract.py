@@ -15,6 +15,17 @@
 AST 는 f-string 을 JoinedStr 로 주고 그 안의 Constant 만 꺼낼 수 있다 —
 즉 **런타임 출력에 리터럴로 나타나는 조각과 정확히 일치**한다.
 
+HTML 조각은 쪼갠다
+------------------
+리터럴이 통째로 HTML 인 경우가 많다::
+
+    '<p class="muted">데이터 없음</p>'
+
+이걸 그대로 키로 쓰면 **영원히 매칭되지 않는다.** 렌더된 문서에서
+번역기가 보는 것은 태그가 아니라 태그 사이의 텍스트(``데이터 없음``)
+뿐이기 때문이다. 그래서 태그를 걷어내고 안의 텍스트와 보이는 속성값만
+키로 삼는다 — i18n.translate_html 이 실제로 훑는 것과 같은 단위다.
+
 제외하는 것
 -----------
 - docstring : 화면에 안 나간다
@@ -38,6 +49,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 ENGINE = ROOT / "engine" / "jiqtx"
 
 HANGUL = re.compile(r"[가-힣]")
@@ -47,7 +59,9 @@ HANGUL = re.compile(r"[가-힣]")
 MAX_LEN = 400
 
 # 번역하지 않는 모듈 — 화면에 안 나가거나(CLI·검증) 개발자용이다.
-SKIP_MODULES = {"cli.py", "_validate.py", "_demo.py", "replay.py"}
+# i18n.py 자신은 제외한다 — docstring 예시로 든 한글이 잡힌다.
+SKIP_MODULES = {"cli.py", "_validate.py", "_demo.py", "replay.py",
+                "i18n.py"}
 
 
 def _docstring_ids(tree: ast.AST) -> set[int]:
@@ -64,11 +78,39 @@ def _docstring_ids(tree: ast.AST) -> set[int]:
     return out
 
 
+def _pieces(v: str) -> list[str]:
+    """리터럴 하나에서 실제로 화면에 나가는 조각들을 뽑는다.
+
+    HTML 이 아니면 그 자체가 조각 하나다. HTML 이면 태그를 빼고 텍스트와
+    보이는 속성값만 남긴다.
+    """
+    if "<" not in v or ">" not in v:
+        return [v]
+    from engine.jiqtx import i18n
+    out: list[str] = []
+    for part in i18n._CHUNK.split(v):
+        if not part:
+            continue
+        low = part[:7].lower()
+        if low.startswith("<style") or low.startswith("<script"):
+            continue
+        if part.startswith("<"):
+            for m in i18n._ATTR_RE.finditer(part):
+                out.append(m.group(3))
+            continue
+        out.append(part)
+    return [p for p in out if HANGUL.search(p)]
+
+
 def extract() -> dict[str, list[str]]:
     """{모듈 경로: [한글 조각, ...]} — 등장 순서를 지킨다."""
     found: dict[str, list[str]] = {}
     for path in sorted(ENGINE.rglob("*.py")):
         if path.name in SKIP_MODULES:
+            continue
+        # 사전 자신은 훑지 않는다. locale/ 아래는 번역문이지 소스가 아니다 —
+        # 넣으면 자기 키를 자기가 다시 발견하는 순환이 된다.
+        if "locale" in path.parts:
             continue
         src = io.open(path, encoding="utf-8").read()
         try:
@@ -85,8 +127,9 @@ def extract() -> dict[str, list[str]]:
             v = node.value
             if not HANGUL.search(v) or len(v) > MAX_LEN:
                 continue
-            if v not in keys:
-                keys.append(v)
+            for piece in _pieces(v):
+                if piece not in keys:
+                    keys.append(piece)
         if keys:
             found[path.relative_to(ROOT).as_posix()] = keys
     return found
