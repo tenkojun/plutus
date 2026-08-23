@@ -19,8 +19,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
+def _dirname(lang: str) -> str:
+    """언어 코드 → 디렉터리 이름. i18n.catalog() 와 같은 규칙이다."""
+    return lang.replace("-", "_").lower()
+
+
 def register(lang: str, module: str, name: str) -> None:
-    init = ROOT / "engine" / "jiqtx" / "locale" / lang / "__init__.py"
+    init = (ROOT / "engine" / "jiqtx" / "locale"
+            / _dirname(lang) / "__init__.py")
     s = io.open(init, encoding="utf-8").read()
     var = "_" + name.upper()
     if var in s:
@@ -41,7 +47,7 @@ def register(lang: str, module: str, name: str) -> None:
 
 def verify(lang: str) -> int:
     from tools.i18n_extract import all_keys
-    pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+    pkg = __import__("engine.jiqtx.locale.%s" % _dirname(lang),
                      fromlist=["CATALOG", "PARTS"])
     seen: dict[str, str] = {}
     dupes = 0
