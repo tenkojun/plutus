@@ -32,7 +32,11 @@ from engine.jiqtx import i18n            # noqa: E402
 
 HANGUL = re.compile(r"[가-힣]")
 # 남은 한글 덩어리 — 조사·공백까지 붙여 하나로 본다.
-RUN = re.compile(r"[가-힣][가-힣0-9A-Za-z·%\s\-—/().,]*[가-힣]|[가-힣]")
+#
+# 길이 상한이 없으면 `[...]*[가-힣]` 가 긴 줄에서 심하게 되돌아간다.
+# 실측으로 보고서 8개 집계가 몇 분씩 걸렸다(번역 자체는 0.05초다).
+# 상한을 두면 되돌릴 거리가 정해져 그럴 일이 없다.
+RUN = re.compile(r"[가-힣][가-힣0-9A-Za-z·%\-—/()., ]{0,80}[가-힣]|[가-힣]")
 
 
 def visible_text(html: str) -> str:
@@ -62,10 +66,11 @@ def analyse(paths: list[Path], lang: str, top: int):
         after = visible_text(i18n.translate_html(html, lang))
         total_before += len(HANGUL.findall(before))
         total_after += len(HANGUL.findall(after))
-        for m in RUN.findall(after):
-            s = m.strip()
-            if s:
-                leftovers[s] += 1
+        if top:                 # 표본이 필요할 때만 센다
+            for m in RUN.findall(after):
+                s = m.strip()
+                if s:
+                    leftovers[s] += 1
 
     done = total_before - total_after
     pct = (done / total_before * 100) if total_before else 100.0
