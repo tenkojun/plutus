@@ -18,6 +18,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from . import i18n
+
 
 def _f(x, fmt="{:.2%}", na="—"):
     try:
@@ -42,8 +44,13 @@ def _md_table(df: pd.DataFrame, cols=None, rename=None, floatfmt=3) -> str:
     return "\n".join([head, sep] + rows) + "\n"
 
 
-def render(a) -> str:
-    """Analysis → 마크다운 문자열."""
+def render(a, lang: str = "ko") -> str:
+    """Analysis → 마크다운 문자열.
+
+    ``lang`` 은 HTML 보고서와 같은 방식이다 — 다 만든 뒤 한 번 번역한다.
+    다만 마크다운은 태그 구분이 없어 문자열 전체를 통과시킨다. 표 구분선과
+    코드 블록에는 한글이 없어 영향받지 않는다.
+    """
     v = a.verdict
     cls = a.classification
     fp = cls.fingerprint
@@ -525,11 +532,11 @@ def render(a) -> str:
     add(f"_소요시간 {max(a.timings.values()):.1f}초 · "
         f"{' · '.join(f'{k} {v:.1f}s' for k, v in list(a.timings.items())[-5:])}_\n")
     add(f"\n> {a.verdict.disclaimer}\n")
-    return "\n".join(L)
+    return i18n.t("\n".join(L), lang)
 
 
-def save(a, path: str) -> str:
-    txt = render(a)
+def save(a, path: str, lang: str = "ko") -> str:
+    txt = render(a, lang=lang)
     with open(path, "w", encoding="utf-8") as f:
         f.write(txt)
     return path
