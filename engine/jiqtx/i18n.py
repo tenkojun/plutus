@@ -29,6 +29,7 @@ f-string 으로 HTML 을 조립하기 때문에, 완성된 문장을 키로 쓸 
 """
 from __future__ import annotations
 
+import html as _html
 import re
 from typing import Dict, List
 
@@ -63,6 +64,17 @@ def catalog(lang: str) -> Dict[str, str]:
         except Exception:
             # 사전이 아직 없어도 보고서 생성은 막지 않는다.
             table = {}
+    # 소스 리터럴과 렌더 결과가 다를 수 있다. 엔진은 값을 넣을 때
+    # html.escape 를 쓰므로, 따옴표나 꺾쇠가 든 문장은 출력에서
+    # `&#x27;` · `&lt;` 로 바뀌어 있다. 원문 키로는 영원히 안 맞는다.
+    # (실제로 "…'오늘 존재하는 종목'만 본다." 가 통째로 안 맞고 있었다.)
+    #
+    # 그래서 이스케이프된 형태를 별칭으로 함께 넣는다. 번역문도 같은
+    # 자리에 들어가므로 같이 이스케이프해 둔다.
+    for k in list(table):
+        esc = _html.escape(k)
+        if esc != k and esc not in table:
+            table[esc] = _html.escape(table[k])
     _CATALOGS[lang] = table
     return table
 

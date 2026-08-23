@@ -22,6 +22,11 @@ from ._dynamic2 import CATALOG as _DYNAMIC2
 from ._dynamic3 import CATALOG as _DYNAMIC3
 from ._equity import CATALOG as _EQUITY
 from ._simple import CATALOG as _SIMPLE
+from ._book import CATALOG as _BOOK
+from ._panel2 import CATALOG as _PANEL2
+from ._config import CATALOG as _CONFIG
+from ._misc import CATALOG as _MISC
+from ._final import CATALOG as _FINAL
 
 PARTS = {
     "glossary": _GLOSSARY,
@@ -40,6 +45,11 @@ PARTS = {
     "dynamic3": _DYNAMIC3,
     "equity": _EQUITY,
     "simple": _SIMPLE,
+    "book": _BOOK,
+    "panel2": _PANEL2,
+    "config": _CONFIG,
+    "misc": _MISC,
+    "final": _FINAL,
 }
 
 CATALOG: dict[str, str] = {}

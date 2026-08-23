@@ -118,12 +118,19 @@ def test_no_duplicate_keys_between_parts(lang):
 
 @pytest.mark.parametrize("lang", LANGS)
 def test_every_key_exists_in_the_source(lang):
-    """소스에 없는 키는 오타다 — 영원히 안 쓰인다."""
-    cat = i18n.catalog(lang)
-    if not cat:
+    """소스에 없는 키는 오타다 — 영원히 안 쓰인다.
+
+    runtime 사전이 아니라 **모듈에 적힌 사전**을 본다. i18n.catalog() 는
+    HTML 이스케이프된 별칭을 얹어 주는데(엔진이 값을 넣을 때 escape 하므로
+    필요하다), 그건 사람이 쓴 키가 아니라 파생물이다.
+    """
+    try:
+        pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+                         fromlist=["CATALOG"])
+    except ImportError:
         pytest.skip("%s 사전 없음" % lang)
     src = set(all_keys())
-    stray = sorted(k for k in cat if k not in src)
+    stray = sorted(k for k in pkg.CATALOG if k not in src)
     assert not stray, "소스에 없는 키 %d개: %s" % (len(stray), stray[:5])
 
 
@@ -131,9 +138,12 @@ def test_every_key_exists_in_the_source(lang):
 def test_no_hangul_left_in_translations(lang):
     """번역값에 한글이 남아 있으면 그 항목은 번역이 안 된 것이다."""
     import re
-    cat = i18n.catalog(lang)
-    if not cat:
+    try:
+        pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+                         fromlist=["CATALOG"])
+    except ImportError:
         pytest.skip("%s 사전 없음" % lang)
+    cat = pkg.CATALOG
     hangul = re.compile(r"[가-힣]")
     bad = [(k, v) for k, v in cat.items() if hangul.search(v)]
     assert not bad, "한글이 남은 항목 %d개: %s" % (len(bad), bad[:3])
