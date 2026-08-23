@@ -31,6 +31,16 @@ from tools.i18n_extract import all_keys            # noqa: E402
 LANGS = ("en", "ja", "zh-CN")
 
 
+def _mod(lang: str) -> str:
+    """언어 코드 → 모듈 이름. i18n.catalog() 와 같은 규칙이어야 한다.
+
+    한 번 어긋났었다: 여기서만 .lower() 를 빼먹어 zh_CN 을 찾았고,
+    디렉터리는 zh_cn 이라 import 가 실패했다. 그런데 실패하면 skip 이라
+    **중국어 검사가 통째로 조용히 꺼져 있었다.**
+    """
+    return lang.replace("-", "_").lower()
+
+
 def _tracked(rel: str) -> bool:
     """git 이 이 경로를 추적하는가."""
     r = subprocess.run(["git", "ls-files", "--error-unmatch", rel],
@@ -102,7 +112,7 @@ def test_tags_and_code_are_untouched():
 def test_no_duplicate_keys_between_parts(lang):
     """파트가 여럿이라 나중 것이 앞의 것을 조용히 덮는다."""
     try:
-        pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+        pkg = __import__("engine.jiqtx.locale.%s" % _mod(lang),
                          fromlist=["PARTS"])
     except ImportError:
         pytest.skip("%s 사전 없음" % lang)
@@ -125,7 +135,7 @@ def test_every_key_exists_in_the_source(lang):
     필요하다), 그건 사람이 쓴 키가 아니라 파생물이다.
     """
     try:
-        pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+        pkg = __import__("engine.jiqtx.locale.%s" % _mod(lang),
                          fromlist=["CATALOG"])
     except ImportError:
         pytest.skip("%s 사전 없음" % lang)
@@ -139,7 +149,7 @@ def test_no_hangul_left_in_translations(lang):
     """번역값에 한글이 남아 있으면 그 항목은 번역이 안 된 것이다."""
     import re
     try:
-        pkg = __import__("engine.jiqtx.locale.%s" % lang.replace("-", "_"),
+        pkg = __import__("engine.jiqtx.locale.%s" % _mod(lang),
                          fromlist=["CATALOG"])
     except ImportError:
         pytest.skip("%s 사전 없음" % lang)
