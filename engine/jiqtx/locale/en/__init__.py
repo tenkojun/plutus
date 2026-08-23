@@ -19,6 +19,9 @@ from ._factors import CATALOG as _FACTORS
 from ._portfolio import CATALOG as _PORTFOLIO
 from ._dynamic1 import CATALOG as _DYNAMIC1
 from ._dynamic2 import CATALOG as _DYNAMIC2
+from ._dynamic3 import CATALOG as _DYNAMIC3
+from ._equity import CATALOG as _EQUITY
+from ._simple import CATALOG as _SIMPLE
 
 PARTS = {
     "glossary": _GLOSSARY,
@@ -34,6 +37,9 @@ PARTS = {
     "portfolio": _PORTFOLIO,
     "dynamic1": _DYNAMIC1,
     "dynamic2": _DYNAMIC2,
+    "dynamic3": _DYNAMIC3,
+    "equity": _EQUITY,
+    "simple": _SIMPLE,
 }
 
 CATALOG: dict[str, str] = {}
