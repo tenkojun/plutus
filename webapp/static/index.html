@@ -23,6 +23,9 @@
 -->
 <script src="/static/vendor/lightweight-charts-4.1.3.js"></script>
 <script src="/static/vendor/qrcode-generator-1.4.4.js"></script>
+<!-- 화면 언어. 한국어 원문을 키로 쓰는 런타임 치환이라 index.html 을
+     고칠 필요가 없다. 사전에 없는 문자열은 한국어 그대로 남는다. -->
+<script src="/static/i18n.js"></script>
 <script>
 /* 저장된 테마를 **가장 먼저** 적용한다.
    예전에는 이 처리가 스크립트 아래쪽(_initAppearance)에 있었는데, 부팅
@@ -2379,6 +2382,17 @@
           <!-- 카테고리: 외관 · 사운드 (C1+C2+C3+C5) -->
           <div class="set-pane" id="set-pane-appearance" style="display:none">
             <div class="set-section">
+              <div class="hd">언어</div>
+              <div style="font-size:12px;color:var(--txt-dim);
+                line-height:1.7;margin-bottom:10px">
+                앱 화면에 표시되는 언어입니다.
+                <b>분석 보고서와 용어 설명은 한국어로 나옵니다.</b>
+              </div>
+              <div id="lang-picker" style="display:flex;flex-wrap:wrap;gap:8px">
+              </div>
+            </div>
+
+            <div class="set-section">
               <div class="hd">테마 (C2)</div>
               <div style="font-size:12px;color:var(--txt-dim);
                 line-height:1.7;margin-bottom:10px">
@@ -4283,9 +4297,17 @@ function _bootSkip(){
   })();
 })();
 
+/* 날짜·시각·숫자 포매팅 로케일. 화면 언어를 따라간다 — 언어를 영어로
+   바꿨는데 시계만 "12시 43분 8초" 로 남으면 설정이 안 먹은 것처럼 보인다.
+   i18n.js 가 없거나 실패하면 한국어로 간다(기존 동작). */
+function _LOC(){
+  try{ return window.PlutusI18N ? PlutusI18N.locale() : 'ko-KR'; }
+  catch(e){ return 'ko-KR'; }
+}
+
 /* ---------- clock ---------- */
 setInterval(()=>{
-  $('#clock').textContent=new Date().toLocaleTimeString('ko-KR',{hour12:false});
+  $('#clock').textContent=new Date().toLocaleTimeString(_LOC(),{hour12:false});
 },1000);
 
 /* ---------- chart init ---------- */
@@ -4780,7 +4802,7 @@ function closeAwarenessDrawer(){
 document.addEventListener('keydown',(e)=>{
   if(e.key==='Escape')closeAwarenessDrawer();
 });
-function fmt(n,d=2){return Number(n).toLocaleString('ko-KR',
+function fmt(n,d=2){return Number(n).toLocaleString(_LOC(),
   {minimumFractionDigits:d,maximumFractionDigits:d});}
 
 /* ---------- chart helpers + indicators ---------- */
@@ -5650,7 +5672,7 @@ async function loadAnalysisHistory(ticker){
       el.innerHTML='';return;
     }
     const rows=items.slice(0,10).map(it=>{
-      const when=utcDate(it.ts).toLocaleString('ko-KR',
+      const when=utcDate(it.ts).toLocaleString(_LOC(),
         {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
       const sigCol=
         (it.signal||'').toString().toLowerCase().includes('buy')?'var(--up)':
@@ -5761,7 +5783,7 @@ async function openVault(){
       return;
     }
     body.innerHTML = r.items.map(it=>{
-      const when = new Date(it.mtime).toLocaleString('ko-KR',
+      const when = new Date(it.mtime).toLocaleString(_LOC(),
         {year:'2-digit',month:'numeric',day:'numeric',
          hour:'2-digit',minute:'2-digit'});
       const badge = it.archived
@@ -5860,7 +5882,7 @@ async function openAnalyzeHistory(){
       return;
     }
     body.innerHTML=items.map(it=>{
-      const when=utcDate(it.ts).toLocaleString('ko-KR',
+      const when=utcDate(it.ts).toLocaleString(_LOC(),
         {year:'2-digit',month:'numeric',day:'numeric',
          hour:'2-digit',minute:'2-digit'});
       const sig=(it.signal||'').toString();
@@ -5992,7 +6014,7 @@ function _relTime(iso){
     if(diff < 86400) return Math.floor(diff/3600) + '시간 전';
     if(diff < 7*86400) return Math.floor(diff/86400) + '일 전';
     // 그 이상은 날짜만
-    return d.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric'});
+    return d.toLocaleDateString(_LOC(), {month:'numeric', day:'numeric'});
   }catch(e){return '';}
 }
 
@@ -7046,9 +7068,32 @@ function resetCustomTheme(){
 }
 // 부팅 시 1회 적용 (custom 테마가 저장돼 있으면 즉시 반영)
 applyCustomThemeVars();
+// 언어 선택. 실제 치환은 i18n.js 가 하고 여기서는 버튼만 그린다.
+// 바꾸면 새로고침한다 — 사전에 없는 조각은 원문이 그대로 남아 있어서,
+// 다시 그리지 않고 언어만 갈아 끼우면 두 언어가 섞인 화면이 된다.
+function renderLangPicker(){
+  const box=$('#lang-picker');
+  if(!box || !window.PlutusI18N) return;
+  const cur=PlutusI18N.current(), L=PlutusI18N.langs;
+  box.innerHTML=Object.keys(L).map(code=>{
+    const on=code===cur;
+    return `<button onclick="setAppLang('${code}')"
+      style="background:${on?'var(--cyan)':'transparent'};
+      color:${on?'var(--on-cyan)':'var(--txt-dim)'};
+      border:1px solid ${on?'var(--cyan)':'var(--line)'};
+      font-family:var(--mono);font-size:11px;padding:7px 14px;
+      cursor:pointer;letter-spacing:.5px">${_escHtml(L[code].label)}</button>`;
+  }).join('');
+}
+function setAppLang(code){
+  if(!window.PlutusI18N || code===PlutusI18N.current()) return;
+  PlutusI18N.setLang(code);   // 저장 후 새로고침
+}
+
 function refreshAppearancePane(){
   _fxSyncButtons();
   refreshReportTheme();
+  renderLangPicker();
   // 테마 picker
   const tp=$('#theme-picker');
   if(tp){
@@ -9303,7 +9348,7 @@ function renderCalendar(events){
   const html=Object.keys(byDay).sort().map(day=>{
     const items=byDay[day].sort((a,b)=>
       (a.time||'').localeCompare(b.time||''));
-    const dayLabel=new Date(day).toLocaleDateString('ko-KR',
+    const dayLabel=new Date(day).toLocaleDateString(_LOC(),
       {month:'long',day:'numeric',weekday:'short'});
     return `<div class="cal-day">${dayLabel}</div>` +
       items.map(ev=>{
@@ -9949,7 +9994,7 @@ function _renderJobRow(j){
   const statColor = _JOB_STATUS_COLOR[j.status] || 'var(--txt-dim)';
   const statKo = _JOB_STATUS_KO[j.status] || j.status;
   const pct = j.progress || 0;
-  const created = j.created_at ? new Date(j.created_at + 'Z').toLocaleTimeString('ko-KR') : '';
+  const created = j.created_at ? new Date(j.created_at + 'Z').toLocaleTimeString(_LOC()) : '';
   const elapsed = j.started_at && j.finished_at ?
     Math.round((new Date(j.finished_at + 'Z') - new Date(j.started_at + 'Z'))/1000) :
     (j.started_at ? Math.round((Date.now() - new Date(j.started_at + 'Z'))/1000) : 0);
@@ -10119,7 +10164,7 @@ async function loadCommunity(){
       const isAd=p.role==='admin';
       const isPin=!!p.pinned;
       const when=p.created_at?
-        utcDate(p.created_at).toLocaleDateString('ko-KR',
+        utcDate(p.created_at).toLocaleDateString(_LOC(),
           {month:'numeric',day:'numeric'}):'';
       const author=p.nickname||p.username;
       return `<div class="cm-row ${isPin?'pinned':''}"
@@ -10181,7 +10226,7 @@ function _renderPostDetail(p, comments){
   const isPin=!!p.pinned;
   const author=p.nickname||p.username;
   const when=p.created_at?
-    utcDate(p.created_at).toLocaleString('ko-KR'):'';
+    utcDate(p.created_at).toLocaleString(_LOC()):'';
   const isOwner=_authUser&&_authUser.id===p.user_id;
   const isMeAdmin=_authUser&&_authUser.role==='admin';
   const canDelete=isOwner||isMeAdmin;
@@ -10189,7 +10234,7 @@ function _renderPostDetail(p, comments){
   const cmHtml=comments.map(c=>{
     const cAuth=c.nickname||c.username;
     const cWhen=c.created_at?
-      utcDate(c.created_at).toLocaleString('ko-KR',
+      utcDate(c.created_at).toLocaleString(_LOC(),
         {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     const cIsAd=c.role==='admin';
     const canDelC=(_authUser&&_authUser.id===c.user_id)||isMeAdmin;
@@ -11135,7 +11180,7 @@ function renderChatSide(){
   const html=_chatList.map(c=>{
     const on=c.id===_curChatId?'on':'';
     const when=c.updated_at?utcDate(c.updated_at).toLocaleDateString(
-      'ko-KR',{month:'numeric',day:'numeric'}):'';
+      _LOC(),{month:'numeric',day:'numeric'}):'';
     return `<div class="item ${on}" onclick="openChat('${c.id}')">
       <span class="del" onclick="event.stopPropagation();deleteChat('${c.id}')">✕</span>
       ${c.title||'(제목 없음)'}
@@ -11444,9 +11489,9 @@ async function refreshAdmin(){
 
     const usersHtml=users.map(u=>{
       const created=u.created_at?
-        utcDate(u.created_at).toLocaleDateString('ko-KR'):'';
+        utcDate(u.created_at).toLocaleDateString(_LOC()):'';
       const lastLogin=u.last_login_at?
-        utcDate(u.last_login_at).toLocaleString('ko-KR',
+        utcDate(u.last_login_at).toLocaleString(_LOC(),
           {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
         :'미로그인';
       const isMe=_authUser && u.id===_authUser.id;
