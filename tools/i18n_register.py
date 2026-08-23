@@ -26,10 +26,12 @@ def register(lang: str, module: str, name: str) -> None:
     if var in s:
         print("이미 등록됨:", name)
         return
-    # 마지막 import 뒤에 붙인다
+    # 마지막 import 뒤에 붙인다. 첫 파트면 PARTS 선언 앞에 넣는다.
     lines = s.split("\n")
-    last = max(i for i, l in enumerate(lines) if l.startswith("from ."))
-    lines.insert(last + 1, "from .%s import CATALOG as %s" % (module, var))
+    idx = [i for i, l in enumerate(lines) if l.startswith("from .")]
+    at = (max(idx) + 1 if idx
+          else next(i for i, l in enumerate(lines) if l.startswith("PARTS")))
+    lines.insert(at, "from .%s import CATALOG as %s" % (module, var))
     s = "\n".join(lines)
     s = s.replace("}\n\nCATALOG", '    "%s": %s,\n}\n\nCATALOG'
                   % (name, var), 1)
