@@ -4331,7 +4331,8 @@ function _chartThemeOptions(){
         up=themeColor('--up','#ff5a52'),
         dn=themeColor('--down','#4d9cff'),
         td=themeColor('--txt-dim','#5d7480'),
-        ln=themeColor('--line','#16202e');
+        ln=themeColor('--line','#16202e'),
+        oc=themeColor('--on-cyan','#03151a');
   return {
     layout:{background:{color:'transparent'},textColor:td,
       fontFamily:"'JetBrains Mono',monospace"},
@@ -4339,8 +4340,13 @@ function _chartThemeOptions(){
       horzLines:{color:'rgba(61,240,255,.05)'}},
     rightPriceScale:{borderColor:ln,autoScale:true},
     timeScale:{borderColor:ln,timeVisible:true},
-    crosshair:{vertLine:{color:cy,width:1,labelBackgroundColor:'var(--on-cyan)'},
-      horzLine:{color:cy,labelBackgroundColor:'var(--on-cyan)'}},
+    // 색은 **반드시 실제 값**으로 넘긴다. 라이브러리는 CSS 변수를 모른다 —
+    // 'var(--on-cyan)' 를 주면 그리는 도중 "Cannot parse color" 로 던지고,
+    // 그 프레임의 남은 그리기(캔들·시간축)가 통째로 죽는다. 가격축은 그
+    // 전에 이미 그려져서 갱신되므로 **"차트는 그대로인데 가격축만 움직이는"**
+    // 모습이 된다. 십자선 라벨이라 커서를 차트에 올렸을 때만 터졌다.
+    crosshair:{vertLine:{color:cy,width:1,labelBackgroundColor:oc},
+      horzLine:{color:cy,labelBackgroundColor:oc}},
     // 휠 줌·드래그 팬을 **명시**한다. 라이브러리 기본값도 켜져 있지만,
     // 적어 두지 않으면 "기본값이 뭐였더라"를 매번 다시 확인하게 된다.
     handleScroll:{mouseWheel:true, pressedMouseMove:true,
@@ -4350,42 +4356,143 @@ function _chartThemeOptions(){
   };
 }
 
-/* 휠 줌 폴백 — 차트가 휠을 못 받는 환경이 있다.
-   ------------------------------------------------
-   Chromium(개발용 브라우저)에서는 deltaMode 0/1/2 모두 정상 확대된다.
-   그런데 EXE(WebView2)에서 캔들 위에 커서를 두고 휠을 굴리면 아무 일도
-   일어나지 않는다는 보고가 있었다. 가격축은 반응하므로 오버레이 문제도
-   아니고(캔버스가 최상단인 것을 확인했다), 라이브러리 옵션 문제도 아니다.
-   즉 **휠 이벤트가 캔버스 리스너까지 도달하지 못하는** 환경이 있다.
-
-   재현되지 않는 환경을 짐작으로 고치는 대신, 안전한 폴백을 둔다:
-   컨테이너에서 버블 단계로 받되 **차트가 이미 처리했으면(preventDefault)
-   아무것도 하지 않는다.** 그래서 잘 되는 환경에서는 이중 확대가 없고,
-   안 되는 환경에서만 우리가 직접 시간축을 줌한다. */
-function _chartWheelFallback(e){
-  if(e.defaultPrevented) return;      // 차트가 이미 처리했다
-  if(!chart) return;
-  const ts = chart.timeScale();
-  const r = ts.getVisibleLogicalRange();
-  if(!r) return;
-  const box = $('#chart').getBoundingClientRect();
-  if(!box.width) return;
-
-  // 커서가 있는 x 지점을 고정하고 그 주위로 확대/축소한다.
-  const f = Math.min(Math.max((e.clientX - box.left) / box.width, 0), 1);
-  // deltaMode: 0=픽셀 1=줄 2=페이지. 줄·페이지는 픽셀로 환산해야
-  // 한 칸 굴렸을 때의 배율이 환경마다 달라지지 않는다.
-  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? box.height : 1;
-  const k = Math.exp(e.deltaY * unit * 0.0015);   // 위로 굴리면 <1 = 확대
-  const span = r.to - r.from;
-  const next = Math.min(Math.max(span * k, 12), 200000);
-  const anchor = r.from + span * f;
-  try{
-    ts.setVisibleLogicalRange({from: anchor - next * f,
-                               to:   anchor + next * (1 - f)});
-    e.preventDefault();
-  }catch(err){ /* 데이터가 없으면 조용히 넘어간다 */ }
+/* 휠 진단 HUD — Ctrl+Alt+W
+   ------------------------
+   배포본에는 개발자 도구가 없다. "휠이 안 먹는다"를 원격으로 좁히려면
+   앱 스스로 말하게 하는 수밖에 없다(진단.ps1 을 동봉하는 것과 같은 이유).
+   평소에는 리스너조차 달지 않는다 — 켤 때 달고 끌 때 뗀다. */
+let _wheelHud = null;
+function _wheelHudLine(text){
+  if(!_wheelHud) return;
+  _wheelHud.textContent = (text + '\n' + _wheelHud.textContent).slice(0, 1800);
 }
+function _wheelDiag(what, e, before, after){
+  if(!_wheelHud) return;
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const name = n => !n ? '없음' :
+    n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') +
+    (n.className && typeof n.className === 'string' && n.className
+      ? '.' + n.className.trim().split(/\s+/).join('.') : '');
+  let span = null, auto = null;
+  try{
+    const r = chart.timeScale().getVisibleLogicalRange();
+    span = r ? (r.to - r.from).toFixed(0) : null;
+    auto = chart.priceScale('right').options().autoScale;
+  }catch(err){}
+  const line =
+    `${new Date().toLocaleTimeString(_LOC(),{hour12:false})} · ${what}` + '\n' +
+    `  대상 ${name(e.target)}\n` +
+    `  커서 밑 ${name(hit)}\n` +
+    `  deltaY ${e.deltaY.toFixed(0)} mode ${e.deltaMode}` +
+    `${e.ctrlKey ? ' ctrl' : ''} · 라이브러리 처리 ${e.defaultPrevented ? 'O' : 'X'}\n` +
+    `  구간 ${before != null ? Number(before).toFixed(0) : span}` +
+    `${after != null ? ' → ' + Number(after).toFixed(0) : ''}` +
+    ` · autoScale ${auto}`;
+  _wheelHud.textContent = (line + '\n\n' + _wheelHud.textContent).slice(0, 1400);
+}
+function _spanNow(){
+  try{
+    const r = chart.timeScale().getVisibleLogicalRange();
+    return r ? r.to - r.from : null;
+  }catch(err){ return null; }
+}
+function _wheelHudProbe(e){
+  const before = _spanNow();
+  // 라이브러리든 폴백이든 처리는 이 뒤에 일어난다. 한 박자 뒤에 결과를
+  // 찍어야 "굴렸는데 아무 일도 안 났다"를 눈으로 구분할 수 있다.
+  setTimeout(()=>_wheelDiag('휠', e, before, _spanNow()), 200);
+  // 되돌려지는 경우가 있다 — 200ms 로는 못 잡는다. 3초까지 지켜본다.
+  [1000, 3000].forEach(ms => setTimeout(()=>{
+    const now = _spanNow();
+    if(now != null && before != null && Math.abs(now - before) > 1)
+      _wheelHudLine(`  +${ms/1000}초 구간 ${now.toFixed(0)}`);
+  }, ms));
+}
+
+/* 시간축을 되돌리는 범인을 이름으로 잡는다.
+   HUD 를 켤 때만 감싸고 끌 때 원래대로 돌려놓는다. */
+let _tsUnwrap = null;
+function _wrapTimeScale(){
+  if(!chart || _tsUnwrap) return;
+  const ts = chart.timeScale();
+  const orig = {};
+  ['setVisibleRange', 'setVisibleLogicalRange', 'fitContent',
+   'scrollToRealTime'].forEach(name=>{
+    if(typeof ts[name] !== 'function') return;
+    orig[name] = ts[name];
+    ts[name] = function(...args){
+      // 스택 두 번째 줄이 호출자다 — 함수 이름만 뽑는다
+      const at = (new Error().stack || '').split('\n')[2] || '';
+      const who = (at.match(/at\s+([\w$.]+)/) || [,'?'])[1];
+      _wheelHudLine(`  ${name} ← ${who}`);
+      return orig[name].apply(this, args);
+    };
+  });
+  // 시리즈 데이터 교체도 본다 — setData 는 라이브러리 **내부에서**
+  // 시간축을 다시 맞추는 경로가 있어서, 공개 API 를 감싸는 것만으로는
+  // 안 잡힌다. 누가 데이터를 다시 넣는지가 곧 답인 경우가 있다.
+  const sOrig = {};
+  if(series){
+    ['setData', 'update'].forEach(name=>{
+      if(typeof series[name] !== 'function') return;
+      sOrig[name] = series[name];
+      series[name] = function(...args){
+        const at = (new Error().stack || '').split('\n')[2] || '';
+        const who = (at.match(/at\s+([\w$.]+)/) || [,'?'])[1];
+        _wheelHudLine(`  series.${name} ← ${who}`);
+        return sOrig[name].apply(this, args);
+      };
+    });
+  }
+
+  // 마지막 그물 — 아무도 공개 API 를 안 거치고 구간이 튀는 경우.
+  // 0.5초마다 보고 1.5배 이상 벌어지면 남긴다.
+  let last = _spanNow();
+  const iv = setInterval(()=>{
+    const now = _spanNow();
+    if(now != null && last != null && last > 0){
+      const ratio = now / last;
+      if(ratio > 1.5 || ratio < 0.67)
+        _wheelHudLine(`${new Date().toLocaleTimeString(_LOC(),{hour12:false})}` +
+                      ` · 구간이 스스로 튐 ${last.toFixed(0)} → ${now.toFixed(0)}`);
+    }
+    if(now != null) last = now;
+  }, 500);
+
+  _tsUnwrap = ()=>{
+    Object.keys(orig).forEach(n=>{ ts[n] = orig[n]; });
+    Object.keys(sOrig).forEach(n=>{ series[n] = sOrig[n]; });
+    clearInterval(iv);
+  };
+}
+function toggleWheelHud(){
+  if(_wheelHud){
+    window.removeEventListener('wheel', _wheelHudProbe, true);
+    if(_tsUnwrap){ _tsUnwrap(); _tsUnwrap = null; }
+    _wheelHud.remove(); _wheelHud = null;
+    return;
+  }
+  const d = document.createElement('div');
+  d.id = 'wheel-hud';
+  d.style.cssText =
+    'position:fixed;right:12px;bottom:12px;z-index:10050;max-width:420px;' +
+    'max-height:52vh;overflow:auto;padding:10px 12px;white-space:pre-wrap;' +
+    'font:11px/1.5 "JetBrains Mono",monospace;color:var(--cyan);' +
+    'background:var(--panel);border:1px solid var(--line);border-radius:4px;' +
+    'box-shadow:0 8px 30px rgba(0,0,0,.5)';
+  d.textContent = '휠 진단 켜짐 — 차트 위에서 휠을 굴려 보세요.\n' +
+                  '(Ctrl+Alt+W 로 끕니다)';
+  document.body.appendChild(d);
+  _wheelHud = d;
+  // 캡처 단계 — 누가 먹기 전에 먼저 본다
+  window.addEventListener('wheel', _wheelHudProbe, {capture:true, passive:true});
+  _wrapTimeScale();   // 시간축을 건드리는 호출자를 이름으로 남긴다
+}
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.altKey && (e.key === 'w' || e.key === 'W')){
+    e.preventDefault(); toggleWheelHud();
+  }
+});
 function applyChartThemeColors(){
   if(!chart||!series) return;
   try{
@@ -4400,9 +4507,6 @@ function applyChartThemeColors(){
 }
 function initChart(){
   chart=LightweightCharts.createChart($('#chart'),_chartThemeOptions());
-  // passive:false 여야 preventDefault 가 먹는다. 버블 단계라 캔버스의
-  // 리스너가 먼저 돈다 — 거기서 처리됐으면 폴백은 스스로 물러난다.
-  $('#chart').addEventListener('wheel', _chartWheelFallback, {passive:false});
   series=chart.addCandlestickSeries({
     upColor:themeColor('--up','#ff5a52'),
     downColor:themeColor('--down','#4d9cff'),

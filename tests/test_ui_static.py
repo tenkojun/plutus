@@ -269,25 +269,42 @@ def test_emphasis_hierarchy_is_preserved(theme):
     assert r["--txt"] > r["--txt-dim"] > r["--txt-mute"], (
         f"{theme}: 강조 단계가 무너졌다 {r}")
 
-def test_chart_wheel_zoom_has_a_fallback():
-    """휠 줌이 안 먹는 환경이 있다 — 폴백이 붙어 있는가.
+def test_chart_colors_are_resolved_not_css_vars():
+    """차트 옵션에 `var(--...)` 를 넘기면 **그리다 죽는다.**
 
-    Chromium 에서는 deltaMode 0/1/2 모두 정상 확대되는데, EXE(WebView2)
-    에서 캔들 위 휠이 아무 반응 없다는 보고가 있었다. 오버레이 문제도
-    (캔버스가 최상단인 것을 확인), 라이브러리 옵션 문제도 아니었다.
+    lightweight-charts 는 CSS 변수를 모른다. 색 자리에 'var(--on-cyan)' 이
+    들어가면 그리는 도중 "Cannot parse color" 로 던지고, 그 프레임의 남은
+    그리기가 통째로 죽는다. 가격축은 그 전에 이미 그려지므로 갱신되고
+    캔들·시간축은 멈춘다 — **"차트는 그대로인데 오른쪽 가격대만 움직인다".**
+    십자선 라벨 색이라 커서를 차트에 올렸을 때만 터졌고, 그래서 "휠 확대가
+    안 된다"로 보였다 (v5.3.0 에서 실제로 그랬다).
 
-    그래서 컨테이너에서 버블 단계로 받되 **차트가 이미 처리했으면
-    물러나는** 폴백을 뒀다. 이 두 가지가 함께 있어야 의미가 있다 —
-    passive:false 가 아니면 preventDefault 가 안 먹고, defaultPrevented
-    검사가 없으면 잘 되는 환경에서 두 배로 확대된다.
+    색은 전부 `themeColor()` 로 실제 값을 뽑아 넘겨야 한다.
     """
     html = (ROOT / "webapp" / "static" / "index.html").read_text(
         encoding="utf-8")
-    assert "_chartWheelFallback" in html, "휠 줌 폴백이 없다"
-    assert "if(e.defaultPrevented) return;" in html, (
-        "폴백이 차트의 처리 여부를 안 본다 — 이중 확대가 난다")
-    assert ("addEventListener('wheel', _chartWheelFallback, "
-            "{passive:false})") in html, (
-        "passive:false 가 아니면 preventDefault 가 먹지 않는다")
+    m = re.search(r"function _chartThemeOptions\(\)\{(.*?)\n\}", html, re.S)
+    assert m, "_chartThemeOptions 를 못 찾았다"
+    body = m.group(1)
+    # 주석은 뺀다 — 왜 이러면 안 되는지 설명하려면 그 문자열을 적어야 한다
+    bad = [l.strip() for l in body.split("\n")
+           if "var(--" in l and not l.strip().startswith("//")]
+    assert not bad, "차트 옵션에 CSS 변수가 그대로 있다 — 그리다 예외가 난다:\n" \
+                    + "\n".join(bad)
     assert "handleScale:{mouseWheel:true" in html, (
         "휠 줌 옵션을 명시하지 않았다")
+
+
+def test_wheel_diagnostic_hud_exists():
+    """배포본에는 개발자 도구가 없다 — 앱이 스스로 말할 수 있어야 한다.
+
+    "휠이 안 먹는다"를 원격으로 좁히려면 사용자가 켤 수 있는 진단이
+    필요하다(`진단.ps1` 을 동봉하는 것과 같은 이유). 평소에는 리스너도
+    달지 않는다 — 켤 때 달고 끌 때 뗀다.
+    """
+    html = (ROOT / "webapp" / "static" / "index.html").read_text(
+        encoding="utf-8")
+    assert "toggleWheelHud" in html
+    assert "e.ctrlKey && e.altKey" in html, "Ctrl+Alt+W 로 켜지지 않는다"
+    assert "removeEventListener('wheel', _wheelHudProbe, true)" in html, (
+        "끌 때 리스너를 떼지 않으면 계속 돈다")

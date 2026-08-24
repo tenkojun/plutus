@@ -28,7 +28,7 @@
 <br>
 
 [![website](https://img.shields.io/badge/ウェブサイト-tenkojun.github.io-3df0ff?style=for-the-badge&labelColor=000000)](https://tenkojun.github.io/plutus/ja/)
-![version](https://img.shields.io/badge/version-5.3.0-c9a227?style=for-the-badge&labelColor=000000)
+![version](https://img.shields.io/badge/version-5.3.1-c9a227?style=for-the-badge&labelColor=000000)
 ![python](https://img.shields.io/badge/python-3.12-c9a227?style=for-the-badge&labelColor=000000)
 ![engine](https://img.shields.io/badge/engine-33_modules_·_15.6k_LOC-c9a227?style=for-the-badge&labelColor=000000)
 ![license](https://img.shields.io/badge/license-MIT-c9a227?style=for-the-badge&labelColor=000000)
