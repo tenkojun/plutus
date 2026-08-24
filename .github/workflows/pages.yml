@@ -1,0 +1,60 @@
+# GitHub Pages — 언어별 4개 페이지 배포
+#
+# 본문은 저장소에 없다. README 가 단일 소스이고, tools/build_pages.py 가
+# 여기서 site/ 안에 index.md · en/ · ja/ · zh-cn/ 을 조립한다.
+# 그래서 README 를 고치면 사이트가 따라온다 — 따로 손댈 곳이 없다.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/README.*.md'
+      - 'site/**'
+      - 'tools/build_pages.py'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 하나씩. 진행 중인 배포를 취소하지 않는다(반쯤 올라간 사이트가
+# 남는 것보다 늦게 끝나는 편이 낫다).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: README → 페이지 조립
+        run: python tools/build_pages.py
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./site
+          destination: ./_site
+
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

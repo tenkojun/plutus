@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="{{ page.lang | default: 'ko' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+{%- comment -%}
+  hreflang — 같은 내용의 4개 언어판을 검색엔진에 알려 준다. 이게 없으면
+  네 페이지가 서로 중복으로 취급돼 하나만 색인되고 나머지는 버려진다.
+  x-default 는 "어느 언어도 안 맞을 때 여기로" — 한국어를 기본으로 둔다.
+{%- endcomment -%}
+{%- assign langs = "ko,en,ja,zh-cn" | split: "," -%}
+{%- assign hreflangs = "ko,en,ja,zh-Hans" | split: "," -%}
+{%- for c in langs -%}
+  {%- if c == "ko" -%}{%- assign href = site.url | append: site.baseurl | append: "/" -%}
+  {%- else -%}{%- assign href = site.url | append: site.baseurl | append: "/" | append: c | append: "/" -%}
+  {%- endif -%}
+<link rel="alternate" hreflang="{{ hreflangs[forloop.index0] }}" href="{{ href }}">
+{%- endfor %}
+<link rel="alternate" hreflang="x-default" href="{{ site.url }}{{ site.baseurl }}/">
+
+{%- comment -%} og·twitter·canonical·JSON-LD 는 seo 태그가 만든다 {%- endcomment -%}
+{% seo %}
+
+<link rel="icon" href="{{ site.baseurl }}/assets/plutus_mark_light.png">
+
+{%- comment -%}
+  소프트웨어임을 구조화 데이터로 알려 준다. 검색결과에서 "오픈소스 ·
+  Python · MIT" 같은 맥락이 붙는다.
+{%- endcomment -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Plutus",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Windows",
+  "programmingLanguage": "Python",
+  "url": "{{ site.url }}{{ site.baseurl }}/",
+  "codeRepository": "https://github.com/{{ site.repository }}",
+  "license": "https://opensource.org/licenses/MIT",
+  "description": {{ page.description | default: site.description | jsonify }},
+  "author": { "@type": "Person", "name": "Tenko jun" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet">
+
+<style>
+/* 앱과 같은 팔레트. 다크 우선이되 시스템 설정을 따른다. */
+:root{
+  --bg:#05070a; --panel:#0a0f16; --line:#16202e;
+  --txt:#c8d6e0; --txt-dim:#8ba0ae; --txt-mute:#5d7480;
+  --cyan:#3df0ff; --gold:#c9a227; --on-cyan:#03151a;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f7f9fb; --panel:#ffffff; --line:#dbe3ea;
+    --txt:#1b2733; --txt-dim:#44586a; --txt-mute:#6b7f8f;
+    --cyan:#0d7d8f; --gold:#8a6f14; --on-cyan:#ffffff;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+    "Noto Sans KR","Noto Sans JP","Noto Sans SC",Roboto,sans-serif;
+  font-size:16px; line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+
+/* 언어 스위처 — 페이지 맨 위에 고정 없이 얹는다 */
+.langbar{
+  border-bottom:1px solid var(--line); background:var(--panel);
+  padding:10px 20px; display:flex; gap:14px; flex-wrap:wrap;
+  align-items:center; font-size:13px;
+}
+.langbar .brand{
+  font-family:"JetBrains Mono",monospace; letter-spacing:2px;
+  color:var(--gold); font-weight:600; margin-right:auto;
+  text-decoration:none;
+}
+.langbar a{color:var(--txt-dim); text-decoration:none}
+.langbar a:hover{color:var(--cyan)}
+.langbar a[aria-current="page"]{color:var(--cyan); font-weight:600}
+
+.wrap{max-width:900px; margin:0 auto; padding:36px 20px 80px}
+
+h1,h2,h3,h4{line-height:1.35; margin:2em 0 .7em; font-weight:650}
+h1{font-size:2.1rem; letter-spacing:.06em; margin-top:.4em}
+h2{font-size:1.45rem; border-bottom:1px solid var(--line); padding-bottom:.35em}
+h3{font-size:1.15rem}
+a{color:var(--cyan)}
+hr{border:0; border-top:1px solid var(--line); margin:2.6em 0}
+blockquote{
+  margin:1.4em 0; padding:.1em 1.1em; border-left:3px solid var(--gold);
+  color:var(--txt-dim); background:var(--panel);
+}
+/* 표와 코드는 좁은 화면에서 페이지를 밀지 않고 스스로 스크롤한다 */
+.tablewrap,pre{overflow-x:auto; max-width:100%}
+table{border-collapse:collapse; width:100%; font-size:.92rem}
+th,td{border:1px solid var(--line); padding:8px 11px; text-align:left;
+  vertical-align:top}
+th{background:var(--panel); font-weight:600}
+pre{background:var(--panel); border:1px solid var(--line);
+  padding:14px 16px; border-radius:4px; font-size:.86rem; line-height:1.6}
+code{background:var(--panel); border:1px solid var(--line);
+  padding:.1em .38em; border-radius:3px; font-size:.88em}
+pre code{background:none; border:0; padding:0}
+img{max-width:100%; height:auto}
+details{border:1px solid var(--line); border-radius:4px;
+  padding:.7em 1em; margin:1.2em 0; background:var(--panel)}
+summary{cursor:pointer; font-weight:600}
+.mermaid{
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:4px; padding:14px; overflow-x:auto;
+}
+footer{
+  border-top:1px solid var(--line); margin-top:60px; padding-top:24px;
+  color:var(--txt-mute); font-size:.85rem; text-align:center;
+}
+footer a{color:var(--txt-dim)}
+</style>
+</head>
+<body>
+
+<nav class="langbar" aria-label="언어 / Language">
+  <a class="brand" href="{{ site.baseurl }}/">PLUTUS</a>
+  {%- assign names = "한국어,English,日本語,简体中文" | split: "," -%}
+  {%- for c in langs -%}
+    {%- if c == "ko" -%}{%- assign href = site.baseurl | append: "/" -%}
+    {%- else -%}{%- assign href = site.baseurl | append: "/" | append: c | append: "/" -%}
+    {%- endif -%}
+    <a href="{{ href }}" hreflang="{{ hreflangs[forloop.index0] }}"
+       {% if c == page.code %}aria-current="page"{% endif %}>{{ names[forloop.index0] }}</a>
+  {%- endfor %}
+  <a href="https://github.com/{{ site.repository }}">GitHub ↗</a>
+</nav>
+
+<main class="wrap">
+  {{ content }}
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/{{ site.repository }}">github.com/{{ site.repository }}</a>
+    · MIT License · Tenko jun (정준화)
+  </p>
+</footer>
+
+<script type="module">
+// mermaid — README 의 파이프라인 다이어그램을 그린다. GitHub 은 자체
+// 렌더링하지만 Jekyll 은 코드블록으로 남기므로 여기서 처리한다.
+// 실패해도 코드블록으로 읽히니 페이지가 죽지는 않는다.
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = !matchMedia('(prefers-color-scheme: light)').matches;
+document.querySelectorAll('pre > code.language-mermaid').forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'mermaid';
+  d.textContent = c.textContent;
+  c.parentElement.replaceWith(d);
+});
+mermaid.initialize({startOnLoad:true, theme: dark ? 'dark' : 'default'});
+</script>
+<script>
+// 넓은 표가 페이지를 가로로 밀지 않게 감싼다.
+document.querySelectorAll('main table').forEach(t => {
+  const w = document.createElement('div');
+  w.className = 'tablewrap';
+  t.parentNode.insertBefore(w, t);
+  w.appendChild(t);
+});
+</script>
+</body>
+</html>

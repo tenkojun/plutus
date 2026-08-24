@@ -64,3 +64,12 @@ plutus-진단.txt
 
 # Inno Setup 이 받아 두는 마이크로소프트 재배포 파일 (빌드 시 자동 다운로드)
 installer/vendor/
+
+# GitHub Pages 조립 산출물 — README 가 단일 소스라 커밋하지 않는다.
+# tools/build_pages.py 가 빌드할 때 만든다.
+site/index.md
+site/en/
+site/ja/
+site/zh-cn/
+site/assets/
+site/_site/

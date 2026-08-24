@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tenkojun.github.io/plutus/sitemap.xml

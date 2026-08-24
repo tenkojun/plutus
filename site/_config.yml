@@ -1,0 +1,45 @@
+# GitHub Pages (Jekyll) 설정
+#
+# 본문은 여기 없다. README 가 단일 소스이고, tools/build_pages.py 가
+# 빌드할 때 index.md · en/ · ja/ · zh-cn/ 을 조립한다.
+
+title: Plutus
+tagline: 기관급 퀀트 분석 터미널
+description: >-
+  종목 하나로 데이터 무결성부터 유동성·변동성·레짐·팩터·리스크까지 훑고,
+  전문가 패널 14인의 심의를 거쳐 외부 리소스 0개의 자기완결 HTML 보고서를
+  만드는 오픈소스 퀀트 분석 터미널.
+
+url: https://tenkojun.github.io
+baseurl: /plutus
+lang: ko
+
+author: Tenko jun (정준화)
+repository: tenkojun/plutus
+
+# 검색 유입용. jekyll-seo-tag 가 og/twitter/canonical 을,
+# jekyll-sitemap 이 sitemap.xml 을 만든다. 둘 다 GitHub Pages 기본 제공.
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+twitter:
+  card: summary_large_image
+logo: /assets/plutus_mark_light.png
+
+# 조립 산출물 말고는 사이트에 넣지 않는다.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+# 마크다운 — README 의 표·각주·코드펜스를 그대로 살린다.
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+
+defaults:
+  - scope: { path: "" }
+    values: { layout: page }
