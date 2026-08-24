@@ -16,7 +16,8 @@ README 에서 조립한다. 생성물은 커밋하지 않는다(.gitignore).
 조립하면서 고치는 것
 --------------------
 - 이미지 경로. README 는 저장소 기준(`webapp/static/…`), 사이트는
-  루트 기준(`/assets/…`)이다.
+  `{{ site.baseurl }}/assets/…` 다(사이트가 `/plutus/` 아래 살아서
+  baseurl 을 빼면 404 가 된다).
 - 저장소 안 파일로 가는 링크(`CHANGELOG.md`, `engine/paths.py` …).
   사이트에는 그 파일이 없으므로 GitHub 로 보낸다.
 - 문서 맨 위의 언어 전환줄. 사이트는 레이아웃이 스위처를 그리므로 뺀다.
@@ -110,9 +111,14 @@ def _strip_lang_bar(md: str) -> str:
         if not ("한국어" in l and "简体中文" in l and "日本語" in l))
 
 
+# 사이트는 `/plutus/` 아래에 산다. baseurl 없이 `/assets/…` 로 쓰면
+# 도메인 루트를 가리켜 **404 가 된다** — 로고가 통째로 사라진다.
+_ASSETS = "{{ site.baseurl }}/assets/"
+
+
 def _fix_assets(md: str) -> str:
-    md = md.replace("../webapp/static/", "/assets/")
-    return md.replace("webapp/static/", "/assets/")
+    md = md.replace("../webapp/static/", _ASSETS)
+    return md.replace("webapp/static/", _ASSETS)
 
 
 def _fix_repo_links(md: str) -> str:

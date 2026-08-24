@@ -61,8 +61,12 @@ def test_no_repo_relative_links_survive(built):
 
 
 def test_images_point_at_site_assets(built):
+    """baseurl 을 빼면 도메인 루트를 가리켜 404 다 — 로고가 사라진다."""
     for code, text in built.items():
         assert "webapp/static/" not in text, code
+        assert "{{ site.baseurl }}/assets/" in text, code
+        assert 'srcset="/assets/' not in text, code
+        assert 'src="/assets/' not in text, code
     for rel in bp.ASSETS:
         assert (SITE / "assets" / Path(rel).name).exists()
 
@@ -93,7 +97,9 @@ def test_layout_declares_every_hreflang():
 
 
 def test_layout_has_seo_and_sitemap_wiring():
-    assert "{% seo %}" in LAYOUT
+    # title=false — 제목은 직접 쓴다(안 그러면 이름이 두 번 들어간다)
+    assert "{% seo title=false %}" in LAYOUT
+    assert "<title>{{ page.title" in LAYOUT
     assert "jekyll-seo-tag" in CONFIG
     assert "jekyll-sitemap" in CONFIG
 

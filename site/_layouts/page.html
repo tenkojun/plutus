@@ -19,8 +19,13 @@
 {%- endfor %}
 <link rel="alternate" hreflang="x-default" href="{{ site.url }}{{ site.baseurl }}/">
 
-{%- comment -%} og·twitter·canonical·JSON-LD 는 seo 태그가 만든다 {%- endcomment -%}
-{% seo %}
+{%- comment -%}
+  og·twitter·canonical 은 seo 태그가 만든다. 다만 <title> 은 직접 쓴다 —
+  seo 태그에 맡기면 "제목 | Plutus" 가 되는데 제목이 이미 Plutus 로
+  시작해서 이름이 두 번 들어간다(검색결과에서 잘린다).
+{%- endcomment -%}
+<title>{{ page.title | default: site.title }}</title>
+{% seo title=false %}
 
 <link rel="icon" href="{{ site.baseurl }}/assets/plutus_mark_light.png">
 
